@@ -41,7 +41,7 @@ class ModelDerivativeClient(BaseOAuthClient):
     **Documentation**: https://forge.autodesk.com/en/docs/model-derivative/v2/reference/http
     """
 
-    def __init__(self, token_provider: TokenProviderInterface(), base_url: str = BASE_URL):
+    def __init__(self, token_provider: TokenProviderInterface, base_url: str = BASE_URL):
         """
         Create new instance of the client.
 
@@ -73,7 +73,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
-    def get_formats(self) -> dict:
+    def get_formats(self) -> Dict:
         """
         Return an up-to-date list of Forge-supported translations, that you can use to identify
         which types of derivatives are supported for each source file type.

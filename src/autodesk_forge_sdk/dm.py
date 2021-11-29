@@ -50,7 +50,7 @@ class OSSClient(BaseOAuthClient):
     **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http
     """
 
-    def __init__(self, token_provider: TokenProviderInterface(), base_url: str=OSS_BASE_URL):
+    def __init__(self, token_provider: TokenProviderInterface, base_url: str=OSS_BASE_URL):
         """
         Create new instance of the client.
 

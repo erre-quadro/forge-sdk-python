@@ -403,6 +403,14 @@ class BaseOAuthClient(BaseClient):
             del kwargs["scopes"]
         return BaseClient._put(self, url, form, json, buff, **kwargs)
 
+    def _patch(self, url: str, form: dict = None, json: dict = None, buff=None, **kwargs):
+        if "scopes" in kwargs:
+            if "headers" not in kwargs:
+                kwargs["headers"] = {}
+            self._set_auth_headers(kwargs["headers"], kwargs["scopes"])
+            del kwargs["scopes"]
+        return BaseClient._patch(self, url, form, json, buff, **kwargs)
+
     def _delete(self, url: str, **kwargs):
         if "scopes" in kwargs:
             if "headers" not in kwargs:

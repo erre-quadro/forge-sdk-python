@@ -36,7 +36,7 @@ class BaseClient:
         response = None
         if form:
             response = requests.post(url, data=form, **kwargs)
-        elif form:
+        elif buff:
             response = requests.post(url, data=buff, **kwargs)
         elif json:
             response = requests.post(url, json=json, **kwargs)
@@ -58,6 +58,22 @@ class BaseClient:
             response = requests.put(url, json=json, **kwargs)
         else:
             response = requests.put(url, **kwargs)
+        response.raise_for_status()
+        return response
+
+    def _patch(
+        self, url: str, form: dict = None, json: dict = None, buff=None, **kwargs
+    ) -> requests.Response:
+        url = self._resolve_url(url)
+        response = None
+        if form:
+            response = requests.patch(url, data=form, **kwargs)
+        elif buff:
+            response = requests.patch(url, data=buff, **kwargs)
+        elif json:
+            response = requests.patch(url, json=json, **kwargs)
+        else:
+            response = requests.patch(url, **kwargs)
         response.raise_for_status()
         return response
 
