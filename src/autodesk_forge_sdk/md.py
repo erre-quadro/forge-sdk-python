@@ -193,7 +193,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         endpoint = "/designdata/{}/thumbnail".format(urn)
         return self._get(endpoint, scopes=READ_SCOPES, params=params).content
 
-    def get_manifest(self, urn: str) -> Dict:
+    def get_manifest(self, urn: str, **kwargs) -> Dict:
         """
         Retrieve the manifest for the source design specified by the urn URI parameter.
         The manifest is a list containing information about the derivatives generated
@@ -221,7 +221,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest".format(urn)
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
 
     def delete_manifest(self, urn: str):
         """
@@ -248,7 +248,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         endpoint = "/designdata/{}/manifest".format(urn)
         self._delete(endpoint, scopes=WRITE_SCOPES)
 
-    def get_metadata(self, urn: str) -> Dict:
+    def get_metadata(self, urn: str, **kwargs) -> Dict:
         """
         Returns a list of model view (metadata) IDs for a design model. The metadata ID enables
         end users to select an object tree and properties for a specific model view.
@@ -275,9 +275,9 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata".format(urn)
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
 
-    def get_viewable_tree(self, urn: str, guid: str) -> Dict:
+    def get_viewable_tree(self, urn: str, guid: str, **kwargs) -> Dict:
         """
         Return an object tree, i.e., a hierarchical list of objects for a model view.
 
@@ -304,9 +304,9 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}".format(urn, guid)
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
 
-    def get_viewable_properties(self, urn: str, guid: str) -> Dict:
+    def get_viewable_properties(self, urn: str, guid: str, **kwargs) -> Dict:
         """
         Return a list of properties for each object in an object tree. Properties are returned
         according to object ID and do not follow a hierarchical structure.
@@ -333,9 +333,9 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}/properties".format(urn, guid)
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
 
-    def get_derivative_info(self, urn: str, deriv_urn: str) -> Dict:
+    def get_derivative_info(self, urn: str, deriv_urn: str, **kwargs) -> Dict:
         """
         Return information about the specified derivative.
 
@@ -352,10 +352,10 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest/{}".format(urn, deriv_urn)
-        resp = self._head(endpoint, scopes=READ_SCOPES)
+        resp = self._head(endpoint, scopes=READ_SCOPES, **kwargs)
         return { "size": int(resp.headers["Content-Length"]) }
 
-    def get_derivative(self, urn: str, deriv_urn: str, byte_range: Tuple = None) -> bytes:
+    def get_derivative(self, urn: str, deriv_urn: str, byte_range: Tuple = None, **kwargs) -> bytes:
         """
         Download a derivative generated from a specific source model. To download the derivative,
         you need to specify its URN which can be retrieved from the Model Derivative manifest.
@@ -377,9 +377,9 @@ class ModelDerivativeClient(BaseOAuthClient):
         headers = {}
         if byte_range:
             headers["Range"] = "bytes={}-{}".format(byte_range[0], byte_range[1])
-        return self._get(endpoint, scopes=READ_SCOPES, headers=headers).content
+        return self._get(endpoint, scopes=READ_SCOPES, headers=headers, **kwargs).content
 
-    def get_derivative_chunked(self, urn: str, deriv_urn: str, chunk_size: int=1024*1024) -> bytes:
+    def get_derivative_chunked(self, urn: str, deriv_urn: str, chunk_size: int=1024*1024, **kwargs) -> bytes:
         """
         Download complete derivative in chunks of specific size.
 
@@ -394,7 +394,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         Returns:
             bytes: Derivative content.
         """
-        deriv_info = self.get_derivative_info(urn, deriv_urn)
+        deriv_info = self.get_derivative_info(urn, deriv_urn, **kwargs)
         buff = bytes()
         # TODO: what about the EMEA endpoint?
         downloaded_bytes = 0
@@ -404,6 +404,6 @@ class ModelDerivativeClient(BaseOAuthClient):
                 min(downloaded_bytes + chunk_size - 1, deriv_info["size"] - 1)
             )
             # TODO: better way to concat buffers in memory?
-            buff = buff + self.get_derivative(urn, deriv_urn, byte_range)
+            buff = buff + self.get_derivative(urn, deriv_urn, byte_range, **kwargs)
             downloaded_bytes += byte_range[1] - byte_range[0] + 1
         return buff
