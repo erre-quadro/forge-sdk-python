@@ -1,5 +1,5 @@
 from typing import Dict, Tuple, Union
-from .auth import BaseOAuthClient, TokenProviderInterface
+from .auth import BaseOAuthClient, Scope, TokenProviderInterface
 from . import Region
 from enum import Enum
 
@@ -76,7 +76,9 @@ class WebhooksClient(BaseOAuthClient):
         """
         params = _get_params_fix({"region": region})
         return self._get(
-            f"/systems/{system}/events/{event}/hooks/{hook_id}", params=params
+            f"/systems/{system}/events/{event}/hooks/{hook_id}",
+            params=params,
+            scopes=[Scope.DATA_READ],
         ).json()
 
     def get_event_hooks(
@@ -121,7 +123,9 @@ class WebhooksClient(BaseOAuthClient):
             }
         )
         return self._get(
-            f"/systems/{system}/events/{event}/hooks", params=params
+            f"/systems/{system}/events/{event}/hooks",
+            params=params,
+            scopes=[Scope.DATA_READ],
         ).json()
 
     def get_system_hooks(
@@ -156,7 +160,9 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(f"/systems/{system}/hooks", params=params).json()
+        return self._get(
+            f"/systems/{system}/hooks", params=params, scopes=[Scope.DATA_READ]
+        ).json()
 
     def get_hooks(
         self,
@@ -189,7 +195,7 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(f"/hooks", params=params).json()
+        return self._get(f"/hooks", params=params, scopes=[Scope.DATA_READ]).json()
 
     def get_app_hooks(
         self,
@@ -228,7 +234,7 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(f"/app/hooks", params=params).json()
+        return self._get(f"/app/hooks", params=params, scopes=[Scope.DATA_READ]).json()
 
     def add_hook_for_event(
         self,
@@ -294,7 +300,10 @@ class WebhooksClient(BaseOAuthClient):
             }
         )
         return self._post(
-            f"/systems/{system}/events/{event}/hooks", params=params, buff=body
+            f"/systems/{system}/events/{event}/hooks",
+            params=params,
+            buff=body,
+            scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
     def add_hook_for_system(
@@ -358,7 +367,12 @@ class WebhooksClient(BaseOAuthClient):
                 "callbackWithEventPayloadOnly": callback_with_event_payload_only,
             }
         )
-        return self._post(f"/systems/{system}/hooks", params=params, buff=body)
+        return self._post(
+            f"/systems/{system}/hooks",
+            params=params,
+            buff=body,
+            scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
+        )
 
     def update_hook(
         self,
@@ -411,6 +425,7 @@ class WebhooksClient(BaseOAuthClient):
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
             buff=body,
+            scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
     def delete_hook(
@@ -437,6 +452,7 @@ class WebhooksClient(BaseOAuthClient):
         return self._delete(
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
+            scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
 
