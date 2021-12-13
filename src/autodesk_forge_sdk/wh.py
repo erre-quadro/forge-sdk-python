@@ -17,6 +17,33 @@ class Sort(str, Enum):
     desc = "desc"
 
 
+class DataManagementEvent(str, Enum):
+    version_added = "dm.version.added"
+    version_modified = "dm.version.modified"
+    version_deleted = "dm.version.deleted"
+    version_moved = "dm.version.moved"
+    version_moved_out = "dm.version.moved.out"
+    version_copied = "dm.version.copied"
+    lineage_reserved = "dm.lineage.reserved"
+    lineage_unreserved = "dm.lineage.unreserved"
+    lineage_updated = "dm.lineage.updated"
+    folder_added = "dm.folder.added"
+    folder_modified = "dm.folder.modified"
+    folder_deleted = "dm.folder.deleted"
+    folder_moved = "dm.folder.moved"
+    folder_copied = "dm.folder.copied"
+    operation_started = "dm.operation.started"
+    operation_completed = "dm.operation.completed"
+
+
+class ModelDerivativeEvent(str, Enum):
+    extraction_finished = "extraction.finished"
+    extraction_updated = "extraction.updated"
+
+
+Event = Union[DataManagementEvent, ModelDerivativeEvent]
+
+
 class WebhooksClient(BaseOAuthClient):
     """
     Forge Webhooks service client.
@@ -59,7 +86,7 @@ class WebhooksClient(BaseOAuthClient):
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
     def get_hook(
-        self, system: str, event: str, hook_id: str, region: Region = Region.US
+        self, system: str, event: Event, hook_id: str, region: Region = Region.US
     ) -> Dict:
         """
         Get details of a webhook based on its webhook ID.
@@ -68,7 +95,7 @@ class WebhooksClient(BaseOAuthClient):
 
         Args:
             system (str): A system for example: **data** for Data Management.
-            event (str): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
+            event (Event): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
             hook_id (str): Id of the webhook to retrieve.
             region (Region): Specifies the geographical location (region) of the server that the request is executed on.
                 Supported values are: ```Region.EMEA```, ```Region.US```.
@@ -84,7 +111,7 @@ class WebhooksClient(BaseOAuthClient):
     def get_event_hooks(
         self,
         system: str,
-        event: str,
+        event: Event,
         scope_name: str = None,
         scope_value: str = None,
         page_state: str = None,
@@ -99,7 +126,7 @@ class WebhooksClient(BaseOAuthClient):
 
         Args:
             system (str): A system for example: **data** for Data Management.
-            event (str): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
+            event (Event): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
             scope_name (str): Scope name used to create hook. For example: folder.
             scope_value (str): Scope value used to create hook.
                 If scope_value is present then scope_name must be present, otherwise scope_value would be ignored.
@@ -239,7 +266,7 @@ class WebhooksClient(BaseOAuthClient):
     def add_hook_for_event(
         self,
         system: str,
-        event: str,
+        event: Event,
         callback_url: str,
         scope: Dict[str, str],
         region: Region = Region.US,
@@ -248,7 +275,7 @@ class WebhooksClient(BaseOAuthClient):
         hub_id: str = None,
         project_id: str = None,
         tenant: str = None,
-        auto_reactive_hook: bool = None,
+        auto_reactivate_hook: bool = None,
         hook_expiry: str = None,
         callback_with_event_payload_only: bool = None,
     ):
@@ -259,12 +286,12 @@ class WebhooksClient(BaseOAuthClient):
 
         Args:
             system (str): A system for example: **data** for Data Management.
-            event (str): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
+            event (Event): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
             callback_url (str): Callback URL registered for the webhook.
             scope (dict): An object that represents the extent to where the event is monitored.
                 For example, if the scope is folder, the webhooks service generates a notification for the specified event occurring in any sub folder or item within that folder.
                 Please refer to the individual event specification pages for valid scopes.
-                For example, [Data Management events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events/data_management).
+                For example, [Data Management events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events/data_management_events).
             region (Region): Specifies the geographical location (region) of the server that the request is executed on.
                 Supported values are: ```Region.EMEA```, ```Region.US```.
                 Default is ```Region.US```.
@@ -277,7 +304,7 @@ class WebhooksClient(BaseOAuthClient):
                 This project ID corresponds to the project ID in the BIM 360 API, prefixed by “b.”
             tenant (str): The tenant that the event is from.
                 If the tenant is specified on the hook, then either the tenant or the scopeValue of the event must match the tenant of the hook.
-            auto_reactive_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
+            auto_reactivate_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
             hook_expiry (str): Optional. ISO8601 formatted date and time when the hook should expire and automatically be deleted.
                 Not providing this parameter means the hook never expires.
             callback_with_event_payload_only (bool): Optional. If ```True```, the callback request payload only contains the event payload, without additional information on the hook.
@@ -294,7 +321,7 @@ class WebhooksClient(BaseOAuthClient):
                 "hubId": hub_id,
                 "projectId": project_id,
                 "tenant": tenant,
-                "autoReactiveHook": auto_reactive_hook,
+                "autoReactivateHook": auto_reactivate_hook,
                 "hookExpiry": hook_expiry,
                 "callbackWithEventPayloadOnly": callback_with_event_payload_only,
             }
@@ -317,7 +344,7 @@ class WebhooksClient(BaseOAuthClient):
         hub_id: str = None,
         project_id: str = None,
         tenant: str = None,
-        auto_reactive_hook: bool = None,
+        auto_reactivate_hook: bool = None,
         hook_expiry: str = None,
         callback_with_event_payload_only: bool = None,
     ):
@@ -345,7 +372,7 @@ class WebhooksClient(BaseOAuthClient):
                 This project ID corresponds to the project ID in the BIM 360 API, prefixed by “b.”
             tenant (str): The tenant that the event is from.
                 If the tenant is specified on the hook, then either the tenant or the scopeValue of the event must match the tenant of the hook.
-            auto_reactive_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
+            auto_reactivate_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
             hook_expiry (str): Optional. ISO8601 formatted date and time when the hook should expire and automatically be deleted.
                 Not providing this parameter means the hook never expires.
             callback_with_event_payload_only (bool): Optional. If ```True```, the callback request payload only contains the event payload, without additional information on the hook.
@@ -362,7 +389,7 @@ class WebhooksClient(BaseOAuthClient):
                 "hubId": hub_id,
                 "projectId": project_id,
                 "tenant": tenant,
-                "autoReactiveHook": auto_reactive_hook,
+                "autoReactiveHook": auto_reactivate_hook,
                 "hookExpiry": hook_expiry,
                 "callbackWithEventPayloadOnly": callback_with_event_payload_only,
             }
@@ -377,14 +404,14 @@ class WebhooksClient(BaseOAuthClient):
     def update_hook(
         self,
         system: str,
-        event: str,
+        event: Event,
         hook_id: str,
         status: Status,
         region: Region = Region.US,
         filter: str = None,
         hook_attribute: Dict[str, Union[str, int, float]] = None,
         token: str = None,
-        auto_reactive_hook: bool = None,
+        auto_reactivate_hook: bool = None,
         hook_expiry: str = None,
     ):
         """
@@ -395,7 +422,7 @@ class WebhooksClient(BaseOAuthClient):
 
         Args:
             system (str): A system for example: **data** for Data Management.
-            event (str): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
+            event (Event): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
             hook_id (str): Id of the webhook to modify.
             status (Status): Status of the hooks. Options: ```Status.active```, ```Status.inactive```.
                 Default is ```Status.active```.
@@ -406,7 +433,7 @@ class WebhooksClient(BaseOAuthClient):
             hook_attribute (dict): A user-defined JSON object, which you can use to store/set some custom information.
                 The maximum size of the JSON object (content) should be less than 1KB.
             token (str): A secret token that is used to generate a hash signature, which is passed along with notification requests to the callback URL.
-            auto_reactive_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
+            auto_reactivate_hook (bool): Optional. Flag to enable the hook for the automatic reactivation flow. See [Event Delivery Guarantees](https://forge.autodesk.com/en/docs/webhooks/v1/developers_guide/event-delivery-guarantees) for more details.
             hook_expiry (str): Optional. ISO8601 formatted date and time when the hook should expire and automatically be deleted.
                 Not providing this parameter means the hook never expires.
         """
@@ -416,7 +443,7 @@ class WebhooksClient(BaseOAuthClient):
                 "status": status,
                 "hookAttribute": hook_attribute,
                 "filter": filter,
-                "autoReactiveHook": auto_reactive_hook,
+                "autoReactiveHook": auto_reactivate_hook,
                 "hookExpiry": hook_expiry,
                 "token": token,
             }
@@ -431,7 +458,7 @@ class WebhooksClient(BaseOAuthClient):
     def delete_hook(
         self,
         system: str,
-        event: str,
+        event: Event,
         hook_id: str,
         region: Region = Region.US,
     ):
@@ -442,7 +469,7 @@ class WebhooksClient(BaseOAuthClient):
 
         Args:
             system (str): A system for example: **data** for Data Management.
-            event (str): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
+            event (Event): Type of event. See [Supported Events](https://forge.autodesk.com/en/docs/webhooks/v1/reference/events).
             hook_id (str): Id of the webhook to modify.
             region (Region): Specifies the geographical location (region) of the server that the request is executed on.
                 Supported values are: ```Region.EMEA```, ```Region.US```.

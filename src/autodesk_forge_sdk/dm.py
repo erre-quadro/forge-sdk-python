@@ -564,3 +564,86 @@ class DataManagementClient(BaseOAuthClient):
             params["filter[id]"] = filter_id
         endpoint = "/hubs/{}/projects".format(hub_id)
         return self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers, params=params)
+
+    def get_project(self, hub_id: str, project_id: str) -> Dict:
+        """
+        Returns a project for a given `project_id`.
+
+        Note that for BIM 360 Docs, a hub ID corresponds to an account ID in the [BIM 360 API](https://forge.autodesk.com/en/docs/bim360/v1/). 
+        To convert an account ID into a hub ID you need to add a “b.” prefix. 
+        For example, an account ID of c8b0c73d-3ae9 translates to a hub ID of b.c8b0c73d-3ae9.
+
+        Similarly, for BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
+        To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
+        For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.   
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-project_id-GET/
+
+        Args:
+            hub_id (str): ID of a hub to list the projects for.
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+
+        Returns:
+            Dict: Project parsed from the response JSON.
+
+        Examples:
+            ```
+            THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
+            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            project = client.get_project("some-hub-id", "some-project-id")
+            print(project)
+            ```
+        """
+        headers = { "Content-Type": "application/vnd.api+json" }
+        endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
+        return self._get(endpoint, scopes=READ_SCOPES, headers=headers)
+
+    def get_project_top_folders(self, hub_id: str, project_id: str, exclude_deleted: bool = False, project_files_only: bool = False) -> List[Dict]:
+        """
+        Returns the details of the highest level folders the user has access to for a given project. 
+        The user must have at least read access to the folders.
+
+        If the user is a Project Admin, it returns all top level folders in the project. 
+        Otherwise, it returns all the highest level folders in the folder hierarchy the user has access to.
+
+        Note that when users have access to a folder, access is automatically granted to its subfolders.   
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-project_id-topFolders-GET/
+
+        Args:
+            hub_id (str): ID of a hub to list the projects for.
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+            exclude_deleted (bool): Specify whether to exclude deleted folders in response for BIM 360 Docs projects when user context is provided.
+                True: response will exclude deleted folders for BIM 360 Docs projects.
+                False (default): response will not exclude deleted folders for BIM 360 Docs projects.
+            project_files_only (bool): Specify whether only Project Files folder or its subfolders will be returned for BIM 360 Docs projects when user context is provided.
+                True: response will include only Project Files folder and its subfolders for BIM 360 Docs projects.
+                False (default): response will include all available folders.
+
+        Returns:
+            List[Dict]: List of project top folders parsed from the response JSON.
+
+        Examples:
+            ```
+            THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
+            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            project = client.get_project("some-hub-id", "some-project-id")
+            print(project)
+            ```
+        """
+        headers = { "Content-Type": "application/vnd.api+json" }
+        endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
+        params = {}
+        if exclude_deleted:
+            params["excludeDeleted"] = exclude_deleted
+        if project_files_only:
+            params["projectFilesOnly"] = project_files_only
+        return self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers, params=params)
