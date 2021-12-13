@@ -3,9 +3,12 @@ Clients for working with the Forge Data Management service.
 """
 
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Union
 from urllib.parse import quote
+
+from aiohttp.typedefs import PathLike
 from .auth import BaseOAuthClient, Scope, TokenProviderInterface
+from . import Region
 
 OSS_BASE_URL = "https://developer.api.autodesk.com/oss/v2"
 DATA_MANAGEMENT_BASE_URL = "https://developer.api.autodesk.com/project/v1"
@@ -18,6 +21,7 @@ class DataRetention(Enum):
     """
     Data retention policies.
     """
+
     TRANSIENT = "transient"
     """
     Think of this type of storage as a cache. Use it for ephemeral results. For example,
@@ -50,7 +54,9 @@ class OSSClient(BaseOAuthClient):
     **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http
     """
 
-    def __init__(self, token_provider: TokenProviderInterface, base_url: str=OSS_BASE_URL):
+    def __init__(
+        self, token_provider: TokenProviderInterface, base_url: str = OSS_BASE_URL
+    ):
         """
         Create new instance of the client.
 
@@ -81,10 +87,10 @@ class OSSClient(BaseOAuthClient):
         """
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
-    def _get_paginated(self, url: str, **kwargs) -> List:
+    async def _get_paginated(self, url: str, **kwargs) -> List:
         items = []
         while url:
-            json = self._get(url, **kwargs).json()
+            json = await self._exec_and_json(self._get, url, **kwargs)
             items = items + json["items"]
             if "next" in json:
                 url = json["next"]
@@ -92,15 +98,17 @@ class OSSClient(BaseOAuthClient):
                 url = None
         return items
 
-    def get_buckets(self, region: str = None, limit: int = None, start_at: str = None) -> Dict:
+    async def get_buckets(
+        self, region: Region = None, limit: int = None, start_at: str = None
+    ) -> Dict:
         """
         List buckets owned by the application, using pagination.
 
         **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http/buckets-GET
 
         Args:
-            region (str, optional): Region where the bucket resides.
-                Acceptable values: US, EMEA. Default: US.
+            region (Region, optional): Region where the bucket resides.
+                Acceptable values: `Region.US`, `Region.EMEA`. Default: `Region.US`.
             limit (int, optional): Limit to the response size.
                 Acceptable values: 1-100. Default = 10.
             start_at (str, optional): Key to use as an offset to continue pagination.
@@ -126,9 +134,11 @@ class OSSClient(BaseOAuthClient):
             params["limit"] = limit
         if start_at:
             params["startAt"] = start_at
-        return self._get("/buckets", scopes=READ_SCOPES, params=params).json()
+        return await self._exec_and_json(
+            self._get, "/buckets", scopes=READ_SCOPES, params=params
+        )
 
-    def get_all_buckets(self, region: str = None) -> List[Dict]:
+    async def get_all_buckets(self, region: str = None) -> List[Dict]:
         """
         List all buckets owned by the application. Similar to `OSSClient.get_buckets`
         but returning all results without pagination.
@@ -154,9 +164,9 @@ class OSSClient(BaseOAuthClient):
         params = {}
         if region:
             params["region"] = region
-        return self._get_paginated("/buckets", scopes=READ_SCOPES, params=params)
+        return await self._get_paginated("/buckets", scopes=READ_SCOPES, params=params)
 
-    def get_bucket_details(self, bucket_key: str) -> Dict:
+    async def get_bucket_details(self, bucket_key: str) -> Dict:
         """
         Get bucket details in JSON format if the caller is the owner of the bucket.
         A request by any other application will result in a response of 403 Forbidden.
@@ -178,9 +188,9 @@ class OSSClient(BaseOAuthClient):
             ```
         """
         endpoint = "/buckets/{}/details".format(quote(bucket_key))
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return await self._exec_and_json(self._get, endpoint, scopes=READ_SCOPES)
 
-    def create_bucket(
+    async def create_bucket(
         self, bucket_key: str, data_retention_policy: DataRetention, region: str
     ) -> Dict:
         """
@@ -211,16 +221,13 @@ class OSSClient(BaseOAuthClient):
             print(details)
             ```
         """
-        json = {
-            "bucketKey": bucket_key,
-            "policyKey": data_retention_policy.value
-        }
-        headers = {
-            "x-ads-region": region
-        }
-        return self._post("/buckets", scopes=WRITE_SCOPES, json=json, headers=headers).json()
+        json = {"bucketKey": bucket_key, "policyKey": data_retention_policy.value}
+        headers = {"x-ads-region": region}
+        return await self._exec_and_json(
+            self._post, "/buckets", scopes=WRITE_SCOPES, json=json, headers=headers
+        )
 
-    def delete_bucket(self, bucket_key: str):
+    async def delete_bucket(self, bucket_key: str):
         """
         Delete a bucket. The bucket must be owned by the application.
 
@@ -231,9 +238,9 @@ class OSSClient(BaseOAuthClient):
             bucket_key (str): Name of the bucket to be deleted.
         """
         endpoint = "/buckets/{}".format(quote(bucket_key))
-        self._delete(endpoint, scopes=DELETE_SCOPES)
+        await self._delete(endpoint, scopes=DELETE_SCOPES)
 
-    def get_objects(self, bucket_key: str, **kwargs) -> Dict:
+    async def get_objects(self, bucket_key: str, **kwargs) -> Dict:
         """
         List objects in bucket, using pagination. It is only available to the bucket creator.
 
@@ -270,9 +277,11 @@ class OSSClient(BaseOAuthClient):
         if "start_at" in kwargs:
             params["startAt"] = kwargs["start_at"]
         endpoint = "/buckets/{}/objects".format(quote(bucket_key))
-        return self._get(endpoint, scopes=READ_SCOPES, params=params).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, params=params
+        )
 
-    def get_all_objects(self, bucket_key: str, begins_with: str = None) -> List:
+    async def get_all_objects(self, bucket_key: str, begins_with: str = None) -> List:
         """
         List all objects in bucket. Similar to `OSSClient.get_objects` but returning
         all results without pagination.
@@ -298,9 +307,9 @@ class OSSClient(BaseOAuthClient):
         if begins_with:
             params["beginsWith"] = begins_with
         endpoint = "/buckets/{}/objects".format(quote(bucket_key))
-        return self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
 
-    def get_object_details(self, bucket_key: str, object_key: str) -> Dict:
+    async def get_object_details(self, bucket_key: str, object_key: str) -> Dict:
         """
         Get object details in JSON format.
 
@@ -325,9 +334,11 @@ class OSSClient(BaseOAuthClient):
             ```
         """
         endpoint = "/buckets/{}/objects/{}".format(quote(bucket_key), quote(object_key))
-        return self._get(endpoint, scopes=READ_SCOPES).json()
+        return await self._exec_and_json(self._get, endpoint, scopes=READ_SCOPES)
 
-    def upload_object(self, bucket_key: str, object_key: str, buff) -> Dict:
+    async def upload_object(
+        self, bucket_key: str, object_key: str, data: Union[bytes, PathLike]
+    ) -> Dict:
         """
         Upload an object. If the specified object name already exists in the bucket,
         the uploaded content will overwrite the existing content for the bucket name/object
@@ -339,7 +350,7 @@ class OSSClient(BaseOAuthClient):
         Args:
             bucket_key (str): Bucket key.
             object_key (str): Name of the object to be created.
-            buff (list of bytes or file): Content to upload.
+            data (list of bytes or file): Content to upload.
 
         Returns:
             Dict: Parsed response JSON with object properties.
@@ -359,9 +370,11 @@ class OSSClient(BaseOAuthClient):
             ```
         """
         endpoint = "/buckets/{}/objects/{}".format(quote(bucket_key), quote(object_key))
-        return self._put(endpoint, buff=buff, scopes=WRITE_SCOPES).json()
+        return await self._exec_and_json(
+            self._put, endpoint, data=data, scopes=WRITE_SCOPES
+        )
 
-    def delete_object(self, bucket_key: str, object_key: str):
+    async def delete_object(self, bucket_key: str, object_key: str):
         """
         Delete an object from bucket.
 
@@ -373,7 +386,7 @@ class OSSClient(BaseOAuthClient):
             object_key (str): Name of the object to be removed.
         """
         endpoint = "/buckets/{}/objects/{}".format(quote(bucket_key), quote(object_key))
-        self._delete(endpoint, scopes=DELETE_SCOPES)
+        await self._delete(endpoint, scopes=DELETE_SCOPES)
 
 
 class DataManagementClient(BaseOAuthClient):
@@ -384,7 +397,10 @@ class DataManagementClient(BaseOAuthClient):
     """
 
     def __init__(
-        self, token_provider: TokenProviderInterface, base_url: str=DATA_MANAGEMENT_BASE_URL):
+        self,
+        token_provider: TokenProviderInterface,
+        base_url: str = DATA_MANAGEMENT_BASE_URL,
+    ):
         """
         Create new instance of the client.
 
@@ -409,16 +425,16 @@ class DataManagementClient(BaseOAuthClient):
         """
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
-    def _get_paginated(self, url: str, **kwargs) -> List:
-        json = self._get(url, **kwargs).json()
+    async def _get_paginated(self, url: str, **kwargs) -> List:
+        json = await self._exec_and_json(self._get, url, **kwargs)
         results = json["data"]
         while "links" in json and "next" in json["links"]:
             url = json["links"]["next"]["href"]
-            json = self._get(url, **kwargs).json()
+            json = await self._exec_and_json(self._get, url, **kwargs)
             results = results + json["data"]
         return results
 
-    def get_hubs(self, filter_id: str=None, filter_name: str=None) -> Dict:
+    async def get_hubs(self, filter_id: str = None, filter_name: str = None) -> Dict:
         """
         Return a collection of accessible hubs for this member.
 
@@ -449,15 +465,19 @@ class DataManagementClient(BaseOAuthClient):
             print(response.links)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
         if filter_id:
             params["filter[id]"] = filter_id
         if filter_name:
             params["filter[name]"] = filter_name
-        return self._get("/hubs", scopes=READ_SCOPES, headers=headers, params=params).json()
+        return await self._exec_and_json(
+            self._get, "/hubs", scopes=READ_SCOPES, headers=headers, params=params
+        )
 
-    def get_all_hubs(self, filter_id: str=None, filter_name: str=None) -> Dict:
+    async def get_all_hubs(
+        self, filter_id: str = None, filter_name: str = None
+    ) -> Dict:
         """
         Similar to `get_hubs`, but retrieving all hubs without pagination.
 
@@ -478,16 +498,23 @@ class DataManagementClient(BaseOAuthClient):
             print(hubs)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
         if filter_id:
             params["filter[id]"] = filter_id
         if filter_name:
             params["filter[name]"] = filter_name
-        return self._get_paginated("/hubs", scopes=READ_SCOPES, headers=headers, params=params)
+        return await self._get_paginated(
+            "/hubs", scopes=READ_SCOPES, headers=headers, params=params
+        )
 
-    def get_projects(
-        self, hub_id: str, filter_id: str=None, page_number: int=None, page_limit=None) -> Dict:
+    async def get_projects(
+        self,
+        hub_id: str,
+        filter_id: str = None,
+        page_number: int = None,
+        page_limit=None,
+    ) -> Dict:
         """
         Return a collection of projects for a given hub_id. A project represents a BIM 360
         Team project, a Fusion Team project, a BIM 360 Docs project, or an A360 Personal project.
@@ -526,7 +553,7 @@ class DataManagementClient(BaseOAuthClient):
             print(response.links)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
         if filter_id:
             params["filter[id]"] = filter_id
@@ -535,9 +562,11 @@ class DataManagementClient(BaseOAuthClient):
         if page_limit:
             params["page[limit]"] = page_limit
         endpoint = "/hubs/{}/projects".format(hub_id)
-        return self._get(endpoint, scopes=READ_SCOPES, headers=headers, params=params).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, headers=headers, params=params
+        )
 
-    def get_all_projects(self, hub_id: str, filter_id: str=None) -> List[Dict]:
+    async def get_all_projects(self, hub_id: str, filter_id: str = None) -> List[Dict]:
         """
         Similar to `get_projects`, but retrieving all projects without pagination.
 
@@ -558,24 +587,26 @@ class DataManagementClient(BaseOAuthClient):
             print(projects)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
         if filter_id:
             params["filter[id]"] = filter_id
         endpoint = "/hubs/{}/projects".format(hub_id)
-        return self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers, params=params)
+        return await self._get_paginated(
+            endpoint, scopes=READ_SCOPES, headers=headers, params=params
+        )
 
-    def get_project(self, hub_id: str, project_id: str) -> Dict:
+    async def get_project(self, hub_id: str, project_id: str) -> Dict:
         """
         Returns a project for a given `project_id`.
 
-        Note that for BIM 360 Docs, a hub ID corresponds to an account ID in the [BIM 360 API](https://forge.autodesk.com/en/docs/bim360/v1/). 
-        To convert an account ID into a hub ID you need to add a “b.” prefix. 
+        Note that for BIM 360 Docs, a hub ID corresponds to an account ID in the [BIM 360 API](https://forge.autodesk.com/en/docs/bim360/v1/).
+        To convert an account ID into a hub ID you need to add a “b.” prefix.
         For example, an account ID of c8b0c73d-3ae9 translates to a hub ID of b.c8b0c73d-3ae9.
 
-        Similarly, for BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
-        To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
-        For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.   
+        Similarly, for BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+        To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
+        For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
 
         **Documentation**:
             https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-project_id-GET/
@@ -583,8 +614,8 @@ class DataManagementClient(BaseOAuthClient):
         Args:
             hub_id (str): ID of a hub to list the projects for.
             project_id (str): The unique identifier of a project.
-                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
-                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
                 For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
 
         Returns:
@@ -598,19 +629,27 @@ class DataManagementClient(BaseOAuthClient):
             print(project)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
-        return self._get(endpoint, scopes=READ_SCOPES, headers=headers)
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, headers=headers
+        )
 
-    def get_project_top_folders(self, hub_id: str, project_id: str, exclude_deleted: bool = False, project_files_only: bool = False) -> List[Dict]:
+    async def get_project_top_folders(
+        self,
+        hub_id: str,
+        project_id: str,
+        exclude_deleted: bool = False,
+        project_files_only: bool = False,
+    ) -> List[Dict]:
         """
-        Returns the details of the highest level folders the user has access to for a given project. 
+        Returns the details of the highest level folders the user has access to for a given project.
         The user must have at least read access to the folders.
 
-        If the user is a Project Admin, it returns all top level folders in the project. 
+        If the user is a Project Admin, it returns all top level folders in the project.
         Otherwise, it returns all the highest level folders in the folder hierarchy the user has access to.
 
-        Note that when users have access to a folder, access is automatically granted to its subfolders.   
+        Note that when users have access to a folder, access is automatically granted to its subfolders.
 
         **Documentation**:
             https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-project_id-topFolders-GET/
@@ -618,8 +657,8 @@ class DataManagementClient(BaseOAuthClient):
         Args:
             hub_id (str): ID of a hub to list the projects for.
             project_id (str): The unique identifier of a project.
-                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API. 
-                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix. 
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
                 For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
             exclude_deleted (bool): Specify whether to exclude deleted folders in response for BIM 360 Docs projects when user context is provided.
                 True: response will exclude deleted folders for BIM 360 Docs projects.
@@ -639,11 +678,13 @@ class DataManagementClient(BaseOAuthClient):
             print(project)
             ```
         """
-        headers = { "Content-Type": "application/vnd.api+json" }
+        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
         params = {}
         if exclude_deleted:
             params["excludeDeleted"] = exclude_deleted
         if project_files_only:
             params["projectFilesOnly"] = project_files_only
-        return self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers, params=params)
+        return await self._get_paginated(
+            endpoint, scopes=READ_SCOPES, headers=headers, params=params
+        )

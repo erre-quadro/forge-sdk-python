@@ -85,7 +85,7 @@ class WebhooksClient(BaseOAuthClient):
         """
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
-    def get_hook(
+    async def get_hook(
         self, system: str, event: Event, hook_id: str, region: Region = Region.US
     ) -> Dict:
         """
@@ -102,13 +102,14 @@ class WebhooksClient(BaseOAuthClient):
                 Default is ```Region.US```.
         """
         params = _get_params_fix({"region": region})
-        return self._get(
+        return await self._exec_and_json(
+            self._get,
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
             scopes=[Scope.DATA_READ],
-        ).json()
+        )
 
-    def get_event_hooks(
+    async def get_event_hooks(
         self,
         system: str,
         event: Event,
@@ -149,13 +150,14 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(
+        return await self._exec_and_json(
+            self._get,
             f"/systems/{system}/events/{event}/hooks",
             params=params,
             scopes=[Scope.DATA_READ],
-        ).json()
+        )
 
-    def get_system_hooks(
+    async def get_system_hooks(
         self,
         system: str,
         page_state: str = None,
@@ -187,11 +189,14 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(
-            f"/systems/{system}/hooks", params=params, scopes=[Scope.DATA_READ]
-        ).json()
+        return await self._exec_and_json(
+            self._get,
+            f"/systems/{system}/hooks",
+            params=params,
+            scopes=[Scope.DATA_READ],
+        )
 
-    def get_hooks(
+    async def get_hooks(
         self,
         page_state: str = None,
         status: Status = Status.active,
@@ -222,9 +227,11 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(f"/hooks", params=params, scopes=[Scope.DATA_READ]).json()
+        return await self._exec_and_json(
+            self._get, f"/hooks", params=params, scopes=[Scope.DATA_READ]
+        )
 
-    def get_app_hooks(
+    async def get_app_hooks(
         self,
         page_state: str = None,
         status: Status = Status.active,
@@ -261,9 +268,11 @@ class WebhooksClient(BaseOAuthClient):
                 "region": region,
             }
         )
-        return self._get(f"/app/hooks", params=params, scopes=[Scope.DATA_READ]).json()
+        return await self._exec_and_json(
+            self._get, f"/app/hooks", params=params, scopes=[Scope.DATA_READ]
+        )
 
-    def add_hook_for_event(
+    async def add_hook_for_event(
         self,
         system: str,
         event: Event,
@@ -326,14 +335,14 @@ class WebhooksClient(BaseOAuthClient):
                 "callbackWithEventPayloadOnly": callback_with_event_payload_only,
             }
         )
-        return self._post(
+        await self._post(
             f"/systems/{system}/events/{event}/hooks",
             params=params,
             buff=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
-    def add_hook_for_system(
+    async def add_hook_for_system(
         self,
         system: str,
         callback_url: str,
@@ -394,14 +403,14 @@ class WebhooksClient(BaseOAuthClient):
                 "callbackWithEventPayloadOnly": callback_with_event_payload_only,
             }
         )
-        return self._post(
+        await self._post(
             f"/systems/{system}/hooks",
             params=params,
             buff=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
-    def update_hook(
+    async def update_hook(
         self,
         system: str,
         event: Event,
@@ -448,14 +457,14 @@ class WebhooksClient(BaseOAuthClient):
                 "token": token,
             }
         )
-        return self._patch(
+        await self._patch(
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
             buff=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
-    def delete_hook(
+    async def delete_hook(
         self,
         system: str,
         event: Event,
@@ -476,7 +485,7 @@ class WebhooksClient(BaseOAuthClient):
                 Default is ```Region.US```.
         """
         params = _get_params_fix({"region": region})
-        return self._delete(
+        await self._delete(
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],

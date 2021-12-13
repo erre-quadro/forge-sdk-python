@@ -41,7 +41,9 @@ class ModelDerivativeClient(BaseOAuthClient):
     **Documentation**: https://forge.autodesk.com/en/docs/model-derivative/v2/reference/http
     """
 
-    def __init__(self, token_provider: TokenProviderInterface, base_url: str = BASE_URL):
+    def __init__(
+        self, token_provider: TokenProviderInterface, base_url: str = BASE_URL
+    ):
         """
         Create new instance of the client.
 
@@ -73,7 +75,7 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
-    def get_formats(self) -> Dict:
+    async def get_formats(self) -> Dict:
         """
         Return an up-to-date list of Forge-supported translations, that you can use to identify
         which types of derivatives are supported for each source file type.
@@ -92,9 +94,9 @@ class ModelDerivativeClient(BaseOAuthClient):
             print(resp.formats)
             ```
         """
-        return self._get("/designdata/formats", scopes=[]).json()
+        return await self._exec_and_json(self._get, "/designdata/formats", scopes=[])
 
-    def submit_job(self, urn: str, output_formats: List[Dict], **kwargs) -> Dict:
+    async def submit_job(self, urn: str, output_formats: List[Dict], **kwargs) -> Dict:
         """
         Translate a design from one format to another format.
 
@@ -126,30 +128,38 @@ class ModelDerivativeClient(BaseOAuthClient):
             ```
         """
         json = {
-            "input": {
-                "urn": urn
-            },
+            "input": {"urn": urn},
             "output": {
                 "formats": output_formats,
                 "destination": {
-                    "region": kwargs["output_region"] if "output_region" in kwargs else "US"
-                }
-            }
+                    "region": kwargs["output_region"]
+                    if "output_region" in kwargs
+                    else "US"
+                },
+            },
         }
         if "root_filename" in kwargs:
             json["input"]["compressedUrn"] = True
             json["input"]["rootFilename"] = kwargs["root_filename"]
         if "workflow_id" in kwargs:
-            json["misc"] = { "workflowId": kwargs["workflow_id"] }
+            json["misc"] = {"workflowId": kwargs["workflow_id"]}
             if "workflow_attr" in kwargs:
                 json["misc"]["workflowAttribute"] = kwargs["workflow_attr"]
         headers = {}
         if "force" in kwargs:
             headers["x-ads-force"] = "true"
         # TODO: what about the EMEA endpoint?
-        return self._post("/designdata/job", scopes=WRITE_SCOPES, json=json, headers=headers).json()
+        return await self._exec_and_json(
+            self._post,
+            "/designdata/job",
+            scopes=WRITE_SCOPES,
+            json=json,
+            headers=headers,
+        )
 
-    def get_thumbnail(self, urn: str, width: int = None, height: int = None) -> bytes:
+    async def get_thumbnail(
+        self, urn: str, width: int = None, height: int = None
+    ) -> bytes:
         """
         Download thumbnail for a source file.
 
@@ -191,9 +201,11 @@ class ModelDerivativeClient(BaseOAuthClient):
             params["height"] = height
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/thumbnail".format(urn)
-        return self._get(endpoint, scopes=READ_SCOPES, params=params).content
+        return await self._exec_and_content(
+            self._get, endpoint, scopes=READ_SCOPES, params=params
+        )
 
-    def get_manifest(self, urn: str, **kwargs) -> Dict:
+    async def get_manifest(self, urn: str, **kwargs) -> Dict:
         """
         Retrieve the manifest for the source design specified by the urn URI parameter.
         The manifest is a list containing information about the derivatives generated
@@ -221,9 +233,11 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest".format(urn)
-        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, **kwargs
+        )
 
-    def delete_manifest(self, urn: str):
+    async def delete_manifest(self, urn: str):
         """
         Delete the manifest and all its translated output files (derivatives).
         However, it does not delete the design source file.
@@ -246,9 +260,9 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest".format(urn)
-        self._delete(endpoint, scopes=WRITE_SCOPES)
+        await self._delete(endpoint, scopes=WRITE_SCOPES)
 
-    def get_metadata(self, urn: str, **kwargs) -> Dict:
+    async def get_metadata(self, urn: str, **kwargs) -> Dict:
         """
         Returns a list of model view (metadata) IDs for a design model. The metadata ID enables
         end users to select an object tree and properties for a specific model view.
@@ -275,9 +289,11 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata".format(urn)
-        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, **kwargs
+        )
 
-    def get_viewable_tree(self, urn: str, guid: str, **kwargs) -> Dict:
+    async def get_viewable_tree(self, urn: str, guid: str, **kwargs) -> Dict:
         """
         Return an object tree, i.e., a hierarchical list of objects for a model view.
 
@@ -304,9 +320,11 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}".format(urn, guid)
-        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, **kwargs
+        )
 
-    def get_viewable_properties(self, urn: str, guid: str, **kwargs) -> Dict:
+    async def get_viewable_properties(self, urn: str, guid: str, **kwargs) -> Dict:
         """
         Return a list of properties for each object in an object tree. Properties are returned
         according to object ID and do not follow a hierarchical structure.
@@ -333,9 +351,11 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}/properties".format(urn, guid)
-        return self._get(endpoint, scopes=READ_SCOPES, **kwargs).json()
+        return await self._exec_and_json(
+            self._get, endpoint, scopes=READ_SCOPES, **kwargs
+        )
 
-    def get_derivative_info(self, urn: str, deriv_urn: str, **kwargs) -> Dict:
+    async def get_derivative_info(self, urn: str, deriv_urn: str, **kwargs) -> Dict:
         """
         Return information about the specified derivative.
 
@@ -352,10 +372,12 @@ class ModelDerivativeClient(BaseOAuthClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest/{}".format(urn, deriv_urn)
-        resp = self._head(endpoint, scopes=READ_SCOPES, **kwargs)
-        return { "size": int(resp.headers["Content-Length"]) }
+        resp = await self._head(endpoint, scopes=READ_SCOPES, **kwargs)
+        return {"size": int(resp.headers["Content-Length"])}
 
-    def get_derivative(self, urn: str, deriv_urn: str, byte_range: Tuple = None, **kwargs) -> bytes:
+    async def get_derivative(
+        self, urn: str, deriv_urn: str, byte_range: Tuple = None, **kwargs
+    ) -> bytes:
         """
         Download a derivative generated from a specific source model. To download the derivative,
         you need to specify its URN which can be retrieved from the Model Derivative manifest.
@@ -377,9 +399,13 @@ class ModelDerivativeClient(BaseOAuthClient):
         headers = {}
         if byte_range:
             headers["Range"] = "bytes={}-{}".format(byte_range[0], byte_range[1])
-        return self._get(endpoint, scopes=READ_SCOPES, headers=headers, **kwargs).content
+        return await self._exec_and_content(
+            self._get, endpoint, scopes=READ_SCOPES, headers=headers, **kwargs
+        )
 
-    def get_derivative_chunked(self, urn: str, deriv_urn: str, chunk_size: int=1024*1024, **kwargs) -> bytes:
+    async def get_derivative_chunked(
+        self, urn: str, deriv_urn: str, chunk_size: int = 1024 * 1024, **kwargs
+    ) -> bytes:
         """
         Download complete derivative in chunks of specific size.
 
@@ -394,16 +420,18 @@ class ModelDerivativeClient(BaseOAuthClient):
         Returns:
             bytes: Derivative content.
         """
-        deriv_info = self.get_derivative_info(urn, deriv_urn, **kwargs)
+        deriv_info = await self.get_derivative_info(urn, deriv_urn, **kwargs)
         buff = bytes()
         # TODO: what about the EMEA endpoint?
         downloaded_bytes = 0
         while downloaded_bytes < deriv_info["size"]:
             byte_range = (
                 downloaded_bytes,
-                min(downloaded_bytes + chunk_size - 1, deriv_info["size"] - 1)
+                min(downloaded_bytes + chunk_size - 1, deriv_info["size"] - 1),
             )
             # TODO: better way to concat buffers in memory?
-            buff = buff + self.get_derivative(urn, deriv_urn, byte_range, **kwargs)
+            buff = buff + await self.get_derivative(
+                urn, deriv_urn, byte_range, **kwargs
+            )
             downloaded_bytes += byte_range[1] - byte_range[0] + 1
         return buff

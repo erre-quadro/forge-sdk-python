@@ -1,6 +1,7 @@
-pylint
+black
 build
+pdoc3
+pylint
+setuptools
 twine
 wheel
-setuptools
-pdoc3

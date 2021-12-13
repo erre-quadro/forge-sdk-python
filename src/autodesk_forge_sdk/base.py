@@ -2,13 +2,15 @@
 Helper classes used by other API clients.
 """
 
-import requests
+from typing import Callable, Coroutine
+import aiohttp
 
 
 class BaseClient:
     """
     Base client for accessing web-based APIs.
     """
+
     def __init__(self, base_url: str):
         self.base_url = base_url
 
@@ -17,68 +19,46 @@ class BaseClient:
             url = self.base_url + url
         return url
 
-    def _head(self, url: str, **kwargs) -> requests.Response:
-        url = self._resolve_url(url)
-        response = requests.head(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _exec_and_content(
+        self, func: Callable, *args, **kwargs
+    ) -> aiohttp.ClientResponse:
+        response = await func(*args, **kwargs)
+        return await response.read()
 
-    def _get(self, url: str, **kwargs) -> requests.Response:
-        url = self._resolve_url(url)
-        response = requests.get(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _exec_and_json(
+        self, func: Callable, *args, **kwargs
+    ) -> aiohttp.ClientResponse:
+        response = await func(*args, **kwargs)
+        return await response.json()
 
-    def _post(
-        self, url: str, form: dict = None, json: dict = None, buff=None, **kwargs
-    ) -> requests.Response:
-        url = self._resolve_url(url)
-        response = None
-        if form:
-            response = requests.post(url, data=form, **kwargs)
-        elif buff:
-            response = requests.post(url, data=buff, **kwargs)
-        elif json:
-            response = requests.post(url, json=json, **kwargs)
-        else:
-            response = requests.post(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _exec_and_text(
+        self, func: Callable, *args, **kwargs
+    ) -> aiohttp.ClientResponse:
+        response = await func(*args, **kwargs)
+        return await response.text()
 
-    def _put(
-        self, url: str, form: dict = None, json: dict = None, buff=None, **kwargs
-    ) -> requests.Response:
-        url = self._resolve_url(url)
-        response = None
-        if form:
-            response = requests.put(url, data=form, **kwargs)
-        elif buff:
-            response = requests.put(url, data=buff, **kwargs)
-        elif json:
-            response = requests.put(url, json=json, **kwargs)
-        else:
-            response = requests.put(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                method, self._resolve_url(url), **kwargs
+            ) as response:
+                response.raise_for_status()
+                return response
 
-    def _patch(
-        self, url: str, form: dict = None, json: dict = None, buff=None, **kwargs
-    ) -> requests.Response:
-        url = self._resolve_url(url)
-        response = None
-        if form:
-            response = requests.patch(url, data=form, **kwargs)
-        elif buff:
-            response = requests.patch(url, data=buff, **kwargs)
-        elif json:
-            response = requests.patch(url, json=json, **kwargs)
-        else:
-            response = requests.patch(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _head(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("HEAD", url, **kwargs)
 
-    def _delete(self, url: str, **kwargs) -> requests.Response:
-        url = self._resolve_url(url)
-        response = requests.delete(url, **kwargs)
-        response.raise_for_status()
-        return response
+    async def _get(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("GET", url, **kwargs)
+
+    async def _post(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("POST", url, **kwargs)
+
+    async def _put(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("PUT", url, **kwargs)
+
+    async def _patch(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("PATCH", url, **kwargs)
+
+    async def _delete(self, url: str, **kwargs) -> aiohttp.ClientResponse:
+        return await self._request("DELETE", url, **kwargs)

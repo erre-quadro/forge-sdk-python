@@ -24,3 +24,6 @@ publish: build
 
 clean:
 	rm -rf build dist docs
+
+format:
+	black .
