@@ -7,8 +7,8 @@ from typing import Dict, List, Union
 from urllib.parse import quote
 
 from aiohttp.typedefs import PathLike
-from .auth import BaseOAuthClient, Scope, TokenProviderInterface
-from . import Region
+from autodesk_forge_sdk.auth import Scope, TokenProviderInterface
+from autodesk_forge_sdk.client import ForgeClient, Region
 
 OSS_BASE_URL = "https://developer.api.autodesk.com/oss/v2"
 DATA_MANAGEMENT_BASE_URL = "https://developer.api.autodesk.com/project/v1"
@@ -47,7 +47,7 @@ class DataRetention(Enum):
     """
 
 
-class OSSClient(BaseOAuthClient):
+class OSSClient(ForgeClient):
     """
     Forge Data Management object storage client.
 
@@ -85,17 +85,15 @@ class OSSClient(BaseOAuthClient):
             client3 = OSSClient(MyTokenProvider())
             ```
         """
-        BaseOAuthClient.__init__(self, token_provider, base_url)
+        ForgeClient.__init__(self, token_provider, base_url)
 
     async def _get_paginated(self, url: str, **kwargs) -> List:
         items = []
         while url:
             json = await self._exec_and_json(self._get, url, **kwargs)
-            items = items + json["items"]
-            if "next" in json:
-                url = json["next"]
-            else:
-                url = None
+            items = items + json["data"]
+            links = json["links"]
+            url = links.get("next")
         return items
 
     async def get_buckets(
@@ -389,7 +387,7 @@ class OSSClient(BaseOAuthClient):
         await self._delete(endpoint, scopes=DELETE_SCOPES)
 
 
-class DataManagementClient(BaseOAuthClient):
+class DataManagementClient(ForgeClient):
     """
     Forge Data Management data management client.
 
@@ -423,7 +421,7 @@ class DataManagementClient(BaseOAuthClient):
             client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             ```
         """
-        BaseOAuthClient.__init__(self, token_provider, base_url)
+        ForgeClient.__init__(self, token_provider, base_url)
 
     async def _get_paginated(self, url: str, **kwargs) -> List:
         json = await self._exec_and_json(self._get, url, **kwargs)
@@ -465,12 +463,12 @@ class DataManagementClient(BaseOAuthClient):
             print(response.links)
             ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
-        if filter_id:
+        if filter_id is not None:
             params["filter[id]"] = filter_id
-        if filter_name:
+        if filter_name is not None:
             params["filter[name]"] = filter_name
+        headers = {"Content-Type": "application/vnd.api+json"}
         return await self._exec_and_json(
             self._get, "/hubs", scopes=READ_SCOPES, headers=headers, params=params
         )
@@ -498,12 +496,12 @@ class DataManagementClient(BaseOAuthClient):
             print(hubs)
             ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
-        if filter_id:
+        if filter_id is not None:
             params["filter[id]"] = filter_id
-        if filter_name:
+        if filter_name is not None:
             params["filter[name]"] = filter_name
+        headers = {"Content-Type": "application/vnd.api+json"}
         return await self._get_paginated(
             "/hubs", scopes=READ_SCOPES, headers=headers, params=params
         )
@@ -512,8 +510,6 @@ class DataManagementClient(BaseOAuthClient):
         self,
         hub_id: str,
         filter_id: str = None,
-        page_number: int = None,
-        page_limit=None,
     ) -> Dict:
         """
         Return a collection of projects for a given hub_id. A project represents a BIM 360
@@ -535,11 +531,6 @@ class DataManagementClient(BaseOAuthClient):
         Args:
             hub_id (str): ID of a hub to list the projects for.
             filter_id (str, optional): ID to filter projects by.
-            page_number (int, optional): Specifies what page to return.
-                Page numbers are 0-based (the first page is page 0).
-            page_limit (int, optional): Specifies the maximum number of elements
-                to return in the page. The default value is 200. The min value is 1.
-                The max value is 200.
 
         Returns:
             Dict: Parsed response JSON.
@@ -553,17 +544,13 @@ class DataManagementClient(BaseOAuthClient):
             print(response.links)
             ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
-        if filter_id:
+        if filter_id is not None:
             params["filter[id]"] = filter_id
-        if page_number:
-            params["page[number]"] = page_number
-        if page_limit:
-            params["page[limit]"] = page_limit
+        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects".format(hub_id)
-        return await self._exec_and_json(
-            self._get, endpoint, scopes=READ_SCOPES, headers=headers, params=params
+        return await self._get_paginated(
+            endpoint, scopes=READ_SCOPES, headers=headers, params=params
         )
 
     async def get_all_projects(self, hub_id: str, filter_id: str = None) -> List[Dict]:
@@ -575,6 +562,7 @@ class DataManagementClient(BaseOAuthClient):
 
         Args:
             hub_id (str): ID of a hub to list the projects for.
+            filter_id (str, optional): ID to filter projects by.
 
         Returns:
             List(Dict): List of projects parsed from the response JSON.
@@ -587,11 +575,11 @@ class DataManagementClient(BaseOAuthClient):
             print(projects)
             ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         params = {}
-        if filter_id:
+        if filter_id is not None:
             params["filter[id]"] = filter_id
         endpoint = "/hubs/{}/projects".format(hub_id)
+        headers = {"Content-Type": "application/vnd.api+json"}
         return await self._get_paginated(
             endpoint, scopes=READ_SCOPES, headers=headers, params=params
         )
@@ -669,22 +657,87 @@ class DataManagementClient(BaseOAuthClient):
 
         Returns:
             List[Dict]: List of project top folders parsed from the response JSON.
-
-        Examples:
-            ```
-            THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
-            project = client.get_project("some-hub-id", "some-project-id")
-            print(project)
-            ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
-        endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
         params = {}
         if exclude_deleted:
             params["excludeDeleted"] = exclude_deleted
         if project_files_only:
             params["projectFilesOnly"] = project_files_only
+        headers = {"Content-Type": "application/vnd.api+json"}
+        endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
         return await self._get_paginated(
             endpoint, scopes=READ_SCOPES, headers=headers, params=params
         )
+
+    async def get_folder(self, project_id: str, folder_id: str):
+        """
+        Returns the folder by ID for any folder within a given project.
+        All folders or sub-folders within a project are associated with their own unique ID, including the root folder.
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-GET/
+
+        Args:
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+            folder_id (str): The unique identifier of a folder.
+
+        Returns:
+            Dict: Folder parsed from the response JSON.
+        """
+        headers = {"Content-Type": "application/vnd.api+json"}
+        endpoint = "/projects/{}/folders/{}".format(project_id, folder_id)
+        return await self._get(endpoint, scopes=READ_SCOPES, headers=headers)
+
+    async def get_folder_contents(
+        self,
+        project_id: str,
+        folder_id: str,
+        filter_id: str = None,
+        filter_type: str = None,
+        filter_last_modified_time_rollup: str = None,
+        include_hidden: bool = False,
+    ):
+        """
+        Returns a collection of items and folders within a folder.
+        Items represent word documents, fusion design files, drawings, spreadsheets, etc.
+
+        Notes:
+        The tip version for each item resource is included by default in the `included` array of the payload.
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/
+
+        Args:
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+            folder_id (str): The unique identifier of a folder.
+            filter_id (str): Filter by the `id` of the `ref` target.
+            filter_type (str): Filter by the `type` of the `ref` target.
+            filter_last_modified_time_rollup (str): Filter by the `lastModifiedTimeRollup` in `attributes`.
+                Supported values are date-time string in the form **YYYY-MM-DDTHH:MM:SS.000000Z** or **YYYY-MM-DDTHH:MM:SS** based on [RFC3339](https://www.ietf.org/rfc/rfc3339.txt).
+            include_hidden (bool):
+                `True`: response will also include items and folders that were deleted from BIM 360 Docs projects.
+                `False` (default): response will not include items and folders that were deleted from BIM 360 Docs projects.
+
+                To return only items and folders that were deleted from BIM 360 Docs projects, see the [Filtering](https://forge.autodesk.com/en/docs/data/v2/overview/filtering/) section.
+
+        Returns:
+            List[Dict]: List of items and folders parsed from the response JSON.
+        """
+        params = {}
+        if filter_id is not None:
+            params["filter[id]"] = filter_id
+        if filter_type is not None:
+            params["filter[type]"] = filter_type
+        if filter_last_modified_time_rollup is not None:
+            params["filter[lastModifiedTimeRollup]"] = filter_last_modified_time_rollup
+        if include_hidden:
+            params["includeHidden"] = include_hidden
+        headers = {"Content-Type": "application/vnd.api+json"}
+        endpoint = "/projects/{}/folders/{}/contents".format(project_id, folder_id)
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers)

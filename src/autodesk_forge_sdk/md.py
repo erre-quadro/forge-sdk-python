@@ -4,7 +4,8 @@ Clients for working with the Forge Model Derivative service.
 
 import base64
 from typing import Dict, List, Tuple
-from .auth import BaseOAuthClient, Scope, TokenProviderInterface
+from autodesk_forge_sdk.auth import Scope, TokenProviderInterface
+from autodesk_forge_sdk.client import ForgeClient, Region
 
 BASE_URL = "https://developer.api.autodesk.com/modelderivative/v2"
 READ_SCOPES = [Scope.DATA_READ, Scope.VIEWABLES_READ]
@@ -34,7 +35,7 @@ def urnify(text):
     return ascii_output.rstrip("=")
 
 
-class ModelDerivativeClient(BaseOAuthClient):
+class ModelDerivativeClient(ForgeClient):
     """
     Forge Model Derivative service client.
 
@@ -73,7 +74,7 @@ class ModelDerivativeClient(BaseOAuthClient):
             client3 = ModelDerivativeClient(MyTokenProvider())
             ```
         """
-        BaseOAuthClient.__init__(self, token_provider, base_url)
+        ForgeClient.__init__(self, token_provider, base_url)
 
     async def get_formats(self) -> Dict:
         """

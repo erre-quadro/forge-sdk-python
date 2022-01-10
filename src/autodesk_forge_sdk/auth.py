@@ -6,7 +6,7 @@ from enum import Enum
 from datetime import datetime, timedelta
 from typing import Dict, List
 from urllib.parse import quote
-from .base import BaseClient
+from autodesk_forge_sdk.base import BaseClient
 
 BASE_URL = "https://developer.api.autodesk.com/authentication/v1"
 
@@ -386,39 +386,46 @@ class BaseOAuthClient(BaseClient):
         BaseClient.__init__(self, base_url)
         self.token_provider = token_provider
 
-    def _set_auth_headers(self, headers: dict, scopes: List[Scope]):
+    async def _set_auth_headers(self, headers: dict, scopes: List[Scope]):
         if "Authorization" in headers:
             return
-        auth = self.token_provider.get_token(scopes)
+        auth = await self.token_provider.get_token(scopes)
         headers["Authorization"] = "Bearer {}".format(auth["access_token"])
 
-    def _fix_kwargs_for_headers(self, kwargs):
-        if "scopes" not in kwargs:
-            return
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
-        self._set_auth_headers(kwargs["headers"], kwargs["scopes"])
-        del kwargs["scopes"]
+    async def _fix_kwargs_for_headers(self, kwargs):
+        if "scopes" in kwargs:
+            if "headers" not in kwargs:
+                kwargs["headers"] = {}
+            await self._set_auth_headers(kwargs["headers"], kwargs["scopes"])
+            del kwargs["scopes"]
         return kwargs
 
     async def _head(self, url: str, **kwargs):
-        return await BaseClient._head(self, url, **self._fix_kwargs_for_headers(kwargs))
+        return await BaseClient._head(
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
+        )
 
     async def _get(self, url: str, **kwargs):
-        return await BaseClient._get(self, url, **self._fix_kwargs_for_headers(kwargs))
+        return await BaseClient._get(
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
+        )
 
     async def _post(self, url: str, **kwargs):
-        return await BaseClient._post(self, url, **self._fix_kwargs_for_headers(kwargs))
+        return await BaseClient._post(
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
+        )
 
     async def _put(self, url: str, **kwargs):
-        return await BaseClient._put(self, url, **self._fix_kwargs_for_headers(kwargs))
+        return await BaseClient._put(
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
+        )
 
     async def _patch(self, url: str, **kwargs):
         return await BaseClient._patch(
-            self, url, **self._fix_kwargs_for_headers(kwargs)
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
         )
 
     async def _delete(self, url: str, **kwargs):
         return await BaseClient._delete(
-            self, url, **self._fix_kwargs_for_headers(kwargs)
+            self, url, **(await self._fix_kwargs_for_headers(kwargs))
         )

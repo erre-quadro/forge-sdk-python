@@ -6,10 +6,4 @@ from .auth import AuthenticationClient, Scope, get_authorization_url
 from .auth import TokenProviderInterface, SimpleTokenProvider, OAuthTokenProvider
 from .dm import OSSClient, DataManagementClient
 from .md import ModelDerivativeClient, urnify
-
-from enum import Enum
-
-
-class Region(str, Enum):
-    US = "US"
-    EMEA = "EMEA"
+from .wh import DataManagementEvent, ModelDerivativeEvent, WebhooksClient

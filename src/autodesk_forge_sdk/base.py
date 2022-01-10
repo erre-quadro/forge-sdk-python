@@ -2,7 +2,7 @@
 Helper classes used by other API clients.
 """
 
-from typing import Callable, Coroutine
+from typing import Callable
 import aiohttp
 
 

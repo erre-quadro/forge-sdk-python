@@ -1,6 +1,6 @@
 from typing import Dict, Tuple, Union
-from .auth import BaseOAuthClient, Scope, TokenProviderInterface
-from . import Region
+from autodesk_forge_sdk.auth import Scope, TokenProviderInterface
+from autodesk_forge_sdk.client import ForgeClient, Region
 from enum import Enum
 
 
@@ -44,7 +44,7 @@ class ModelDerivativeEvent(str, Enum):
 Event = Union[DataManagementEvent, ModelDerivativeEvent]
 
 
-class WebhooksClient(BaseOAuthClient):
+class WebhooksClient(ForgeClient):
     """
     Forge Webhooks service client.
 
@@ -83,7 +83,7 @@ class WebhooksClient(BaseOAuthClient):
             client3 = WebhooksClient(MyTokenProvider())
             ```
         """
-        BaseOAuthClient.__init__(self, token_provider, base_url)
+        ForgeClient.__init__(self, token_provider, base_url)
 
     async def get_hook(
         self, system: str, event: Event, hook_id: str, region: Region = Region.US
