@@ -181,7 +181,7 @@ class AuthenticationClient(BaseClient):
             "grant_type": "client_credentials",
             "scope": " ".join(map(lambda s: s.value, scopes)),
         }
-        return await self._exec_and_json(self._post, "/authenticate", data=data)
+        return await self._req_json(self._post, "/authenticate", data=data)
 
     async def get_token(
         self, client_id: str, client_secret: str, code: str, redirect_uri: str
@@ -226,7 +226,7 @@ class AuthenticationClient(BaseClient):
             "code": code,
             "redirect_uri": redirect_uri,
         }
-        return await self._exec_and_json(self._post, "/gettoken", data=data)
+        return await self._req_json(self._post, "/gettoken", data=data)
 
     async def refresh_token(
         self,
@@ -269,7 +269,7 @@ class AuthenticationClient(BaseClient):
             "refresh_token": refresh_token,
             "scope": " ".join(map(lambda s: s.value, scopes)),
         }
-        return await self._exec_and_json(self._post, "/refreshtoken", data=data)
+        return await self._req_json(self._post, "/refreshtoken", data=data)
 
     async def get_user_profile(self, access_token: str) -> Dict:
         """
@@ -293,7 +293,7 @@ class AuthenticationClient(BaseClient):
             ```
         """
         headers = {"Authorization": "Bearer {}".format(access_token)}
-        return await self._exec_and_json(self._get, "/users/@me", headers=headers)
+        return await self._req_json(self._get, "/users/@me", headers=headers)
 
 
 class TokenProviderInterface:

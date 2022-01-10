@@ -2,7 +2,7 @@
 Helper classes used by other API clients.
 """
 
-from typing import Callable
+from typing import Callable, Coroutine
 import aiohttp
 
 
@@ -19,22 +19,22 @@ class BaseClient:
             url = self.base_url + url
         return url
 
-    async def _exec_and_content(
-        self, func: Callable, *args, **kwargs
+    async def _req_content(
+        self, req: Coroutine, *args, **kwargs
     ) -> aiohttp.ClientResponse:
-        response = await func(*args, **kwargs)
+        response = await req(*args, **kwargs)
         return await response.read()
 
-    async def _exec_and_json(
-        self, func: Callable, *args, **kwargs
+    async def _req_json(
+        self, req: Coroutine, *args, **kwargs
     ) -> aiohttp.ClientResponse:
-        response = await func(*args, **kwargs)
+        response = await req(*args, **kwargs)
         return await response.json()
 
-    async def _exec_and_text(
-        self, func: Callable, *args, **kwargs
+    async def _req_text(
+        self, req: Coroutine, *args, **kwargs
     ) -> aiohttp.ClientResponse:
-        response = await func(*args, **kwargs)
+        response = await req(*args, **kwargs)
         return await response.text()
 
     async def _request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
@@ -43,10 +43,11 @@ class BaseClient:
                 method, self._resolve_url(url), **kwargs
             ) as response:
                 response.raise_for_status()
+                await response.read()
                 return response
 
     async def _head(self, url: str, **kwargs) -> aiohttp.ClientResponse:
-        return await self._request("HEAD", url, **kwargs)
+        return next(el async for el in self._request("HEAD", url, **kwargs))
 
     async def _get(self, url: str, **kwargs) -> aiohttp.ClientResponse:
         return await self._request("GET", url, **kwargs)

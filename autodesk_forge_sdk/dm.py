@@ -89,11 +89,19 @@ class OSSClient(ForgeClient):
 
     async def _get_paginated(self, url: str, **kwargs) -> List:
         items = []
-        while url:
-            json = await self._exec_and_json(self._get, url, **kwargs)
-            items = items + json["data"]
+        should_stop = False
+        while not should_stop:
+            json = await self._req_json(self._get, url, **kwargs)
+            new_items = json.get("data")
+            if new_items is None:
+                should_stop = True
+                continue
+            items.extend(new_items)
             links = json["links"]
             url = links.get("next")
+            if url is None:
+                should_stop = True
+                continue
         return items
 
     async def get_buckets(
@@ -132,7 +140,7 @@ class OSSClient(ForgeClient):
             params["limit"] = limit
         if start_at:
             params["startAt"] = start_at
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, "/buckets", scopes=READ_SCOPES, params=params
         )
 
@@ -186,7 +194,7 @@ class OSSClient(ForgeClient):
             ```
         """
         endpoint = "/buckets/{}/details".format(quote(bucket_key))
-        return await self._exec_and_json(self._get, endpoint, scopes=READ_SCOPES)
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES)
 
     async def create_bucket(
         self, bucket_key: str, data_retention_policy: DataRetention, region: str
@@ -221,7 +229,7 @@ class OSSClient(ForgeClient):
         """
         json = {"bucketKey": bucket_key, "policyKey": data_retention_policy.value}
         headers = {"x-ads-region": region}
-        return await self._exec_and_json(
+        return await self._req_json(
             self._post, "/buckets", scopes=WRITE_SCOPES, json=json, headers=headers
         )
 
@@ -275,7 +283,7 @@ class OSSClient(ForgeClient):
         if "start_at" in kwargs:
             params["startAt"] = kwargs["start_at"]
         endpoint = "/buckets/{}/objects".format(quote(bucket_key))
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, endpoint, scopes=READ_SCOPES, params=params
         )
 
@@ -332,7 +340,7 @@ class OSSClient(ForgeClient):
             ```
         """
         endpoint = "/buckets/{}/objects/{}".format(quote(bucket_key), quote(object_key))
-        return await self._exec_and_json(self._get, endpoint, scopes=READ_SCOPES)
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES)
 
     async def upload_object(
         self, bucket_key: str, object_key: str, data: Union[bytes, PathLike]
@@ -368,9 +376,7 @@ class OSSClient(ForgeClient):
             ```
         """
         endpoint = "/buckets/{}/objects/{}".format(quote(bucket_key), quote(object_key))
-        return await self._exec_and_json(
-            self._put, endpoint, data=data, scopes=WRITE_SCOPES
-        )
+        return await self._req_json(self._put, endpoint, data=data, scopes=WRITE_SCOPES)
 
     async def delete_object(self, bucket_key: str, object_key: str):
         """
@@ -424,11 +430,11 @@ class DataManagementClient(ForgeClient):
         ForgeClient.__init__(self, token_provider, base_url)
 
     async def _get_paginated(self, url: str, **kwargs) -> List:
-        json = await self._exec_and_json(self._get, url, **kwargs)
+        json = await self._req_json(self._get, url, **kwargs)
         results = json["data"]
         while "links" in json and "next" in json["links"]:
             url = json["links"]["next"]["href"]
-            json = await self._exec_and_json(self._get, url, **kwargs)
+            json = await self._req_json(self._get, url, **kwargs)
             results = results + json["data"]
         return results
 
@@ -469,7 +475,7 @@ class DataManagementClient(ForgeClient):
         if filter_name is not None:
             params["filter[name]"] = filter_name
         headers = {"Content-Type": "application/vnd.api+json"}
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, "/hubs", scopes=READ_SCOPES, headers=headers, params=params
         )
 
@@ -619,7 +625,7 @@ class DataManagementClient(ForgeClient):
         """
         headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, endpoint, scopes=READ_SCOPES, headers=headers
         )
 

@@ -1,7 +1,9 @@
+anyio
 black
 build
 pdoc3
-pylint
+pytest
+pytest-dotenv
 setuptools
 twine
 wheel

@@ -8,13 +8,13 @@ test:
 	python3 -m unittest
 
 lint:
-	python3 -m pylint src/autodesk_forge_sdk
+	python3 -m pylint autodesk_forge_sdk
 
 build:
 	python3 -m build
 
 docs:
-	python3 -m pdoc --html -o docs src/autodesk_forge_sdk
+	python3 -m pdoc --html -o docs autodesk_forge_sdk
 
 prepublish-check: build
 	python3 -m twine check dist/*
@@ -26,4 +26,4 @@ clean:
 	rm -rf build dist docs
 
 format:
-	black .
+	black autodesk_forge_sdk/ tests/

@@ -1,37 +1,24 @@
-import unittest
-from .context import (
-    AuthenticationClient,
-    Scope,
-    get_authorization_url,
-    FORGE_CLIENT_ID,
-    FORGE_CLIENT_SECRET,
-)
+import pytest
+
+from autodesk_forge_sdk import AuthenticationClient, Scope, get_authorization_url
 
 
-class AuthenticationClientTestSuite(unittest.TestCase):
-    """Forge Authentication client test cases."""
-
-    def setUp(self):
-        self.client = AuthenticationClient()
-
-    def test_authenticate(self):
-        token = self.client.authenticate(
-            FORGE_CLIENT_ID,
-            FORGE_CLIENT_SECRET,
-            [Scope.VIEWABLES_READ, Scope.USER_READ],
-        )
-        assert token["access_token"]
-
-    def test_authorization_url(self):
-        url = get_authorization_url(
-            FORGE_CLIENT_ID,
-            "code",
-            "http://foo.bar",
-            [Scope.VIEWABLES_READ, Scope.USER_READ],
-            "random state",
-        )
-        assert url
+def test_authorization_url(client_id: str):
+    assert get_authorization_url(
+        client_id,
+        "code",
+        "http://foo.bar",
+        [Scope.VIEWABLES_READ, Scope.USER_READ],
+        "random state",
+    )
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.anyio
+async def test_authenticate(client_id: str, client_secret: str):
+    client = AuthenticationClient()
+    token = await client.authenticate(
+        client_id,
+        client_secret,
+        [Scope.VIEWABLES_READ, Scope.USER_READ],
+    )
+    assert token["access_token"]

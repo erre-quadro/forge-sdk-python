@@ -5,7 +5,7 @@ Clients for working with the Forge Model Derivative service.
 import base64
 from typing import Dict, List, Tuple
 from autodesk_forge_sdk.auth import Scope, TokenProviderInterface
-from autodesk_forge_sdk.client import ForgeClient, Region
+from autodesk_forge_sdk.client import ForgeClient
 
 BASE_URL = "https://developer.api.autodesk.com/modelderivative/v2"
 READ_SCOPES = [Scope.DATA_READ, Scope.VIEWABLES_READ]
@@ -95,7 +95,7 @@ class ModelDerivativeClient(ForgeClient):
             print(resp.formats)
             ```
         """
-        return await self._exec_and_json(self._get, "/designdata/formats", scopes=[])
+        return await self._req_json(self._get, "/designdata/formats", scopes=[])
 
     async def submit_job(self, urn: str, output_formats: List[Dict], **kwargs) -> Dict:
         """
@@ -150,7 +150,7 @@ class ModelDerivativeClient(ForgeClient):
         if "force" in kwargs:
             headers["x-ads-force"] = "true"
         # TODO: what about the EMEA endpoint?
-        return await self._exec_and_json(
+        return await self._req_json(
             self._post,
             "/designdata/job",
             scopes=WRITE_SCOPES,
@@ -202,7 +202,7 @@ class ModelDerivativeClient(ForgeClient):
             params["height"] = height
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/thumbnail".format(urn)
-        return await self._exec_and_content(
+        return await self._req_content(
             self._get, endpoint, scopes=READ_SCOPES, params=params
         )
 
@@ -234,9 +234,7 @@ class ModelDerivativeClient(ForgeClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest".format(urn)
-        return await self._exec_and_json(
-            self._get, endpoint, scopes=READ_SCOPES, **kwargs
-        )
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES, **kwargs)
 
     async def delete_manifest(self, urn: str):
         """
@@ -290,9 +288,7 @@ class ModelDerivativeClient(ForgeClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata".format(urn)
-        return await self._exec_and_json(
-            self._get, endpoint, scopes=READ_SCOPES, **kwargs
-        )
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES, **kwargs)
 
     async def get_viewable_tree(self, urn: str, guid: str, **kwargs) -> Dict:
         """
@@ -321,9 +317,7 @@ class ModelDerivativeClient(ForgeClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}".format(urn, guid)
-        return await self._exec_and_json(
-            self._get, endpoint, scopes=READ_SCOPES, **kwargs
-        )
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES, **kwargs)
 
     async def get_viewable_properties(self, urn: str, guid: str, **kwargs) -> Dict:
         """
@@ -352,9 +346,7 @@ class ModelDerivativeClient(ForgeClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/metadata/{}/properties".format(urn, guid)
-        return await self._exec_and_json(
-            self._get, endpoint, scopes=READ_SCOPES, **kwargs
-        )
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES, **kwargs)
 
     async def get_derivative_info(self, urn: str, deriv_urn: str, **kwargs) -> Dict:
         """
@@ -400,7 +392,7 @@ class ModelDerivativeClient(ForgeClient):
         headers = {}
         if byte_range:
             headers["Range"] = "bytes={}-{}".format(byte_range[0], byte_range[1])
-        return await self._exec_and_content(
+        return await self._req_content(
             self._get, endpoint, scopes=READ_SCOPES, headers=headers, **kwargs
         )
 

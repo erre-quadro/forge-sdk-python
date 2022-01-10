@@ -102,7 +102,7 @@ class WebhooksClient(ForgeClient):
                 Default is ```Region.US```.
         """
         params = _get_params_fix({"region": region})
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get,
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
@@ -150,7 +150,7 @@ class WebhooksClient(ForgeClient):
                 "region": region,
             }
         )
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get,
             f"/systems/{system}/events/{event}/hooks",
             params=params,
@@ -189,7 +189,7 @@ class WebhooksClient(ForgeClient):
                 "region": region,
             }
         )
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get,
             f"/systems/{system}/hooks",
             params=params,
@@ -227,7 +227,7 @@ class WebhooksClient(ForgeClient):
                 "region": region,
             }
         )
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, f"/hooks", params=params, scopes=[Scope.DATA_READ]
         )
 
@@ -268,7 +268,7 @@ class WebhooksClient(ForgeClient):
                 "region": region,
             }
         )
-        return await self._exec_and_json(
+        return await self._req_json(
             self._get, f"/app/hooks", params=params, scopes=[Scope.DATA_READ]
         )
 
