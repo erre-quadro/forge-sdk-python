@@ -670,7 +670,7 @@ class DataManagementClient(ForgeClient):
         if project_files_only:
             params["projectFilesOnly"] = project_files_only
         headers = {"Content-Type": "application/vnd.api+json"}
-        endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
+        endpoint = "/hubs/{}/projects/{}/topFolders".format(hub_id, project_id)
         return await self._get_paginated(
             endpoint, scopes=READ_SCOPES, headers=headers, params=params
         )
