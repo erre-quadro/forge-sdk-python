@@ -1,0 +1,5 @@
+inclue NOTES.md
+include README.md
+include requirements.txt
+
+recursive-exclude * __pycache__

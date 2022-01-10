@@ -3,6 +3,9 @@ import setuptools
 with open("README.md") as f:
     readme = f.read()
 
+with open("requirements.txt") as f:
+    requirements = [l for l in f.read().splitlines() if l.strip()]
+
 setuptools.setup(
     name="autodesk-forge-sdk",
     version="0.1.2",
@@ -20,8 +23,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    package_dir={"": "autodesk_forge_sdk"},
-    packages=setuptools.find_packages(where="src"),
+    packages=setuptools.find_packages(include=["autodesk_forge_sdk"]),
     python_requires=">=3.6",
-    install_requires=["aiohttp"],
+    install_requires=requirements,
 )
