@@ -389,11 +389,11 @@ class ModelDerivativeClient(ForgeClient):
         """
         # TODO: what about the EMEA endpoint?
         endpoint = "/designdata/{}/manifest/{}".format(urn, deriv_urn)
-        headers = {}
+        headers = kwargs.setdefault("headers", {})
         if byte_range:
             headers["Range"] = "bytes={}-{}".format(byte_range[0], byte_range[1])
         return await self._req_content(
-            self._get, endpoint, scopes=READ_SCOPES, headers=headers, **kwargs
+            self._get, endpoint, scopes=READ_SCOPES, **kwargs
         )
 
     async def get_derivative_chunked(

@@ -1,3 +1,4 @@
+from typing import List
 from autodesk_forge_sdk.auth import BaseOAuthClient, TokenProviderInterface
 from enum import Enum
 
@@ -16,9 +17,29 @@ class ForgeClient(BaseOAuthClient):
         BaseOAuthClient.__init__(self, token_provider, base_url)
 
     async def _fix_kwargs_for_headers(self, kwargs):
+        headers = kwargs.setdefault("headers", {})
         if "region" in kwargs:
-            if "headers" not in kwargs:
-                kwargs["headers"] = {}
-            kwargs["x-ads-region"] = kwargs["region"]
+            headers["x-ads-region"] = kwargs["region"]
             del kwargs["region"]
         return await super()._fix_kwargs_for_headers(kwargs)
+
+    async def _get_paginated(self, url: str, **kwargs) -> List:
+        items = []
+        should_stop = False
+        while not should_stop:
+            json = await self._req_json(self._get, url, **kwargs)
+            new_items = json.get("data")
+            if new_items is None:
+                should_stop = True
+                continue
+            items.extend(new_items)
+            links = json["links"]
+            next = links.get("next")
+            if next is None:
+                should_stop = True
+                continue
+            url = next.get("href")
+            if url is None:
+                should_stop = True
+                continue
+        return items

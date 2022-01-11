@@ -2,7 +2,7 @@
 Helper classes used by other API clients.
 """
 
-from typing import Callable, Coroutine
+from typing import Coroutine
 import aiohttp
 
 
@@ -23,7 +23,7 @@ class BaseClient:
         self, req: Coroutine, *args, **kwargs
     ) -> aiohttp.ClientResponse:
         response = await req(*args, **kwargs)
-        return await response.read()
+        return response._body
 
     async def _req_json(
         self, req: Coroutine, *args, **kwargs
@@ -38,6 +38,9 @@ class BaseClient:
         return await response.text()
 
     async def _request(self, method: str, url: str, **kwargs) -> aiohttp.ClientResponse:
+        params = kwargs.get("params")
+        if params is not None:
+            kwargs["params"] = _fix_params(params)
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 method, self._resolve_url(url), **kwargs
@@ -47,7 +50,7 @@ class BaseClient:
                 return response
 
     async def _head(self, url: str, **kwargs) -> aiohttp.ClientResponse:
-        return next(el async for el in self._request("HEAD", url, **kwargs))
+        return await self._request("HEAD", url, **kwargs)
 
     async def _get(self, url: str, **kwargs) -> aiohttp.ClientResponse:
         return await self._request("GET", url, **kwargs)
@@ -63,3 +66,10 @@ class BaseClient:
 
     async def _delete(self, url: str, **kwargs) -> aiohttp.ClientResponse:
         return await self._request("DELETE", url, **kwargs)
+
+
+def _fix_params(params):
+    for k, v in {**params}.items():
+        if isinstance(v, bool):
+            params[k] = "true" if v else "false"
+    return params

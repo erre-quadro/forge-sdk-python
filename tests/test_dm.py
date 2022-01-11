@@ -2,12 +2,17 @@ import pytest
 
 from autodesk_forge_sdk import OSSClient
 from autodesk_forge_sdk.auth import OAuthTokenProvider
-from autodesk_forge_sdk.dm import DataManagementClient
+from autodesk_forge_sdk.dm import DataManagementClient, ProjectManagementClient
 
 
 @pytest.fixture()
 def oss_client(token_provider: OAuthTokenProvider):
     return OSSClient(token_provider)
+
+
+@pytest.fixture()
+def pm_client(token_provider: OAuthTokenProvider):
+    return ProjectManagementClient(token_provider)
 
 
 @pytest.fixture()
@@ -58,5 +63,5 @@ async def test_upload_object_file(oss_client: OSSClient, forge_bucket: str):
 
 
 @pytest.mark.anyio
-async def test_get_all_hubs(dm_client: DataManagementClient):
-    assert await dm_client.get_all_hubs() is not None
+async def test_get_all_hubs(pm_client: ProjectManagementClient):
+    assert await pm_client.get_all_hubs() is not None

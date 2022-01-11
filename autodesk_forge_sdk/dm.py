@@ -11,7 +11,8 @@ from autodesk_forge_sdk.auth import Scope, TokenProviderInterface
 from autodesk_forge_sdk.client import ForgeClient, Region
 
 OSS_BASE_URL = "https://developer.api.autodesk.com/oss/v2"
-DATA_MANAGEMENT_BASE_URL = "https://developer.api.autodesk.com/project/v1"
+PROJECT_MANAGEMENT_BASE_URL = "https://developer.api.autodesk.com/project/v1"
+DATA_MANAGEMENT_BASE_URL = "https://developer.api.autodesk.com/data/v1"
 READ_SCOPES = [Scope.BUCKET_READ, Scope.DATA_READ]
 WRITE_SCOPES = [Scope.BUCKET_CREATE, Scope.DATA_CREATE, Scope.DATA_WRITE]
 DELETE_SCOPES = [Scope.BUCKET_DELETE]
@@ -86,23 +87,6 @@ class OSSClient(ForgeClient):
             ```
         """
         ForgeClient.__init__(self, token_provider, base_url)
-
-    async def _get_paginated(self, url: str, **kwargs) -> List:
-        items = []
-        should_stop = False
-        while not should_stop:
-            json = await self._req_json(self._get, url, **kwargs)
-            new_items = json.get("data")
-            if new_items is None:
-                should_stop = True
-                continue
-            items.extend(new_items)
-            links = json["links"]
-            url = links.get("next")
-            if url is None:
-                should_stop = True
-                continue
-        return items
 
     async def get_buckets(
         self, region: Region = None, limit: int = None, start_at: str = None
@@ -393,9 +377,9 @@ class OSSClient(ForgeClient):
         await self._delete(endpoint, scopes=DELETE_SCOPES)
 
 
-class DataManagementClient(ForgeClient):
+class ProjectManagementClient(ForgeClient):
     """
-    Forge Data Management data management client.
+    Forge Data Management project management client.
 
     **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http
     """
@@ -403,7 +387,7 @@ class DataManagementClient(ForgeClient):
     def __init__(
         self,
         token_provider: TokenProviderInterface,
-        base_url: str = DATA_MANAGEMENT_BASE_URL,
+        base_url: str = PROJECT_MANAGEMENT_BASE_URL,
     ):
         """
         Create new instance of the client.
@@ -424,19 +408,10 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             ```
         """
         ForgeClient.__init__(self, token_provider, base_url)
-
-    async def _get_paginated(self, url: str, **kwargs) -> List:
-        json = await self._req_json(self._get, url, **kwargs)
-        results = json["data"]
-        while "links" in json and "next" in json["links"]:
-            url = json["links"]["next"]["href"]
-            json = await self._req_json(self._get, url, **kwargs)
-            results = results + json["data"]
-        return results
 
     async def get_hubs(self, filter_id: str = None, filter_name: str = None) -> Dict:
         """
@@ -463,7 +438,7 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             response = client.get_hubs()
             print(response.data)
             print(response.links)
@@ -474,9 +449,8 @@ class DataManagementClient(ForgeClient):
             params["filter[id]"] = filter_id
         if filter_name is not None:
             params["filter[name]"] = filter_name
-        headers = {"Content-Type": "application/vnd.api+json"}
         return await self._req_json(
-            self._get, "/hubs", scopes=READ_SCOPES, headers=headers, params=params
+            self._get, "/hubs", scopes=READ_SCOPES, params=params
         )
 
     async def get_all_hubs(
@@ -497,7 +471,7 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             hubs = client.get_all_hubs()
             print(hubs)
             ```
@@ -507,15 +481,14 @@ class DataManagementClient(ForgeClient):
             params["filter[id]"] = filter_id
         if filter_name is not None:
             params["filter[name]"] = filter_name
-        headers = {"Content-Type": "application/vnd.api+json"}
-        return await self._get_paginated(
-            "/hubs", scopes=READ_SCOPES, headers=headers, params=params
-        )
+        return await self._get_paginated("/hubs", scopes=READ_SCOPES, params=params)
 
     async def get_projects(
         self,
         hub_id: str,
         filter_id: str = None,
+        page_number: int = None,
+        page_limit: int = None,
     ) -> Dict:
         """
         Return a collection of projects for a given hub_id. A project represents a BIM 360
@@ -537,6 +510,12 @@ class DataManagementClient(ForgeClient):
         Args:
             hub_id (str): ID of a hub to list the projects for.
             filter_id (str, optional): ID to filter projects by.
+            page_number (int, optional): Specifies what page to return.
+                Page numbers are 0-based (the first page is page 0).
+            page_limit (int, optional): Specifies the maximum number of elements to return in the page.
+                The default value is 200.
+                The min value is 1.
+                The max value is 200.
 
         Returns:
             Dict: Parsed response JSON.
@@ -544,7 +523,7 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             response = client.get_projects("some-hub-id")
             print(response.data)
             print(response.links)
@@ -553,11 +532,12 @@ class DataManagementClient(ForgeClient):
         params = {}
         if filter_id is not None:
             params["filter[id]"] = filter_id
-        headers = {"Content-Type": "application/vnd.api+json"}
+        if page_number is not None:
+            params["page[number]"] = page_number
+        if page_limit is not None:
+            params["page[limit]"] = page_limit
         endpoint = "/hubs/{}/projects".format(hub_id)
-        return await self._get_paginated(
-            endpoint, scopes=READ_SCOPES, headers=headers, params=params
-        )
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
 
     async def get_all_projects(self, hub_id: str, filter_id: str = None) -> List[Dict]:
         """
@@ -576,7 +556,7 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             projects = client.get_all_projects("some-hub-id")
             print(projects)
             ```
@@ -585,10 +565,7 @@ class DataManagementClient(ForgeClient):
         if filter_id is not None:
             params["filter[id]"] = filter_id
         endpoint = "/hubs/{}/projects".format(hub_id)
-        headers = {"Content-Type": "application/vnd.api+json"}
-        return await self._get_paginated(
-            endpoint, scopes=READ_SCOPES, headers=headers, params=params
-        )
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
 
     async def get_project(self, hub_id: str, project_id: str) -> Dict:
         """
@@ -618,15 +595,16 @@ class DataManagementClient(ForgeClient):
         Examples:
             ```
             THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
-            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            client = ProjectManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
             project = client.get_project("some-hub-id", "some-project-id")
             print(project)
             ```
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects/{}".format(hub_id, project_id)
         return await self._req_json(
-            self._get, endpoint, scopes=READ_SCOPES, headers=headers
+            self._get,
+            endpoint,
+            scopes=READ_SCOPES,
         )
 
     async def get_project_top_folders(
@@ -669,11 +647,45 @@ class DataManagementClient(ForgeClient):
             params["excludeDeleted"] = exclude_deleted
         if project_files_only:
             params["projectFilesOnly"] = project_files_only
-        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/hubs/{}/projects/{}/topFolders".format(hub_id, project_id)
-        return await self._get_paginated(
-            endpoint, scopes=READ_SCOPES, headers=headers, params=params
-        )
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
+
+
+class DataManagementClient(ForgeClient):
+    """
+    Forge Data Management data management client.
+
+    **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http
+    """
+
+    def __init__(
+        self,
+        token_provider: TokenProviderInterface,
+        base_url: str = DATA_MANAGEMENT_BASE_URL,
+    ):
+        """
+        Create new instance of the client.
+
+        Args:
+            token_provider (autodesk_forge_sdk.auth.TokenProviderInterface):
+                Provider that will be used to generate access tokens for API calls.
+
+                Use `autodesk_forge_sdk.auth.OAuthTokenProvider` if you have your app's client ID
+                and client secret available, `autodesk_forge_sdk.auth.SimpleTokenProvider`
+                if you would like to use an existing access token instead, or even your own
+                implementation of the `autodesk_forge_sdk.auth.TokenProviderInterface` interface.
+
+                Note that many APIs in the Forge Data Management service require
+                a three-legged OAuth token.
+            base_url (str, optional): Base URL for API calls.
+
+        Examples:
+            ```
+            THREE_LEGGED_TOKEN = os.environ["THREE_LEGGED_TOKEN"]
+            client = DataManagementClient(SimpleTokenProvider(THREE_LEGGED_TOKEN))
+            ```
+        """
+        ForgeClient.__init__(self, token_provider, base_url)
 
     async def get_folder(self, project_id: str, folder_id: str):
         """
@@ -693,9 +705,8 @@ class DataManagementClient(ForgeClient):
         Returns:
             Dict: Folder parsed from the response JSON.
         """
-        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/projects/{}/folders/{}".format(project_id, folder_id)
-        return await self._get(endpoint, scopes=READ_SCOPES, headers=headers)
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES)
 
     async def get_folder_contents(
         self,
@@ -744,6 +755,41 @@ class DataManagementClient(ForgeClient):
             params["filter[lastModifiedTimeRollup]"] = filter_last_modified_time_rollup
         if include_hidden:
             params["includeHidden"] = include_hidden
-        headers = {"Content-Type": "application/vnd.api+json"}
         endpoint = "/projects/{}/folders/{}/contents".format(project_id, folder_id)
-        return await self._get_paginated(endpoint, scopes=READ_SCOPES, headers=headers)
+        return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
+
+    async def get_item(
+        self, project_id: str, item_id: str, include_path_in_project: bool = None
+    ):
+        """
+        Retrieves metadata for a specified item.
+        Items represent word documents, fusion design files, drawings, spreadsheets, etc.
+
+        Notes:
+
+        The tip version for the item is included in the `included` array of the payload.
+        To retrieve metadata for multiple items, see the [ListItems](https://forge.autodesk.com/en/docs/data/v2/overview/commands) command.
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/
+
+        Args:
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+            item_id (str): The unique identifier of an item.
+            include_path_in_project (bool, optional): Specify whether to return pathInProject attribute in response for BIM 360 Docs projects.
+                pathInProject is the relative path of the item starting from project’s root folder.
+                `True`: response will include pathInProject attribute for BIM 360 Docs projects.
+                `False` (default): response will not include pathInProject attribute for BIM 360 Docs projects.
+        Returns:
+
+        """
+        params = {}
+        if include_path_in_project is not None:
+            params["includePathInProject"] = include_path_in_project
+        endpoint = "/projects/{}/items/{}".format(project_id, item_id)
+        return await self._req_json(
+            self._get, endpoint, scopes=READ_SCOPES, params=params
+        )
