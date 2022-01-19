@@ -483,14 +483,12 @@ class ProjectManagementClient(ForgeClient):
             params["filter[name]"] = filter_name
         return await self._get_paginated("/hubs", scopes=READ_SCOPES, params=params)
 
-    async def get_hub(
-        self, hub_id: str
-    ) -> Dict:
+    async def get_hub(self, hub_id: str) -> Dict:
         """
         Returns data on a specific hub_id.
 
-        Note that for BIM 360 Docs, a hub ID corresponds to an account ID in the BIM 360 API. 
-        To convert an account ID into a hub ID you need to add a “b.” prefix. 
+        Note that for BIM 360 Docs, a hub ID corresponds to an account ID in the BIM 360 API.
+        To convert an account ID into a hub ID you need to add a “b.” prefix.
         For example, an account ID of c8b0c73d-3ae9 translates to a hub ID of b.c8b0c73d-3ae9.
 
         **Documentation**: https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-GET
@@ -509,7 +507,7 @@ class ProjectManagementClient(ForgeClient):
             print(hubs)
             ```
         """
-        return await self._req_json(f"/hubs/{hub_id}", scopes=READ_SCOPES)
+        return await self._req_json(self._get, f"/hubs/{hub_id}", scopes=READ_SCOPES)
 
     async def get_projects(
         self,
