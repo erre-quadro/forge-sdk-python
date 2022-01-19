@@ -509,7 +509,7 @@ class ProjectManagementClient(ForgeClient):
             print(hubs)
             ```
         """
-        return await self._get(f"/hubs/{hub_id}", scopes=READ_SCOPES)
+        return await self._req_json(f"/hubs/{hub_id}", scopes=READ_SCOPES)
 
     async def get_projects(
         self,
