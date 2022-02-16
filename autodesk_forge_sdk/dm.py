@@ -968,3 +968,26 @@ class DataManagementClient(ForgeClient):
             params["filter[versionNumber]"] = filter_version_number
         endpoint = "/projects/{}/items/{}/versions".format(project_id, item_id)
         return await self._get_paginated(endpoint, scopes=READ_SCOPES, params=params)
+
+    async def get_item_version(
+        self,
+        project_id: str,
+        version_id: str,
+    ):
+        """
+        Returns the version with the given `version_id`.
+
+        **Documentation**:
+            https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-versions-version_id-GET/
+
+        Args:
+            project_id (str): The unique identifier of a project.
+                For BIM 360 Docs, the project ID in the Data Management API corresponds to the project ID in the BIM 360 API.
+                To convert a project ID in the BIM 360 API into a project ID in the Data Management API you need to add a “b.” prefix.
+                For example, a project ID of c8b0c73d-3ae9 translates to a project ID of b.c8b0c73d-3ae9.
+            version_id (str): The unique identifier of a version.
+        Returns:
+
+        """
+        endpoint = "/projects/{}/versions/{}".format(project_id, version_id)
+        return await self._req_json(self._get, endpoint, scopes=READ_SCOPES)
