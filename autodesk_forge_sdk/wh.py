@@ -491,6 +491,30 @@ class WebhooksClient(ForgeClient):
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
+    async def add_token(
+        self,
+        token: str,
+        region: Region = Region.US,
+    ):
+        """
+        Add a new Webhook secret token
+
+        [Documentation](https://forge.autodesk.com/en/docs/webhooks/v1/reference/http/tokens-POST/)
+
+        Args:
+            token (str): A secret token that is used to generate a hash signature, which is passed along with notification requests to the callback URL.
+            region (str): Specifies the geographical location (region) of the server that the request is executed on.
+                Supported values are: ```Region.EMEA```, ```Region.US```.
+                Default is ```Region.US```.
+        """
+        params = _get_params_fix({"region": region})
+        await self._post(
+            f"/tokens",
+            params=params,
+            json={"token": token},
+            scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
+        )
+
 
 def _get_params_fix(fix_map):
     if isinstance(fix_map, Tuple):
