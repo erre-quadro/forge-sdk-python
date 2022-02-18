@@ -338,7 +338,7 @@ class WebhooksClient(ForgeClient):
         await self._post(
             f"/systems/{system}/events/{event}/hooks",
             params=params,
-            buff=body,
+            json=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
@@ -406,7 +406,7 @@ class WebhooksClient(ForgeClient):
         await self._post(
             f"/systems/{system}/hooks",
             params=params,
-            buff=body,
+            json=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
@@ -460,7 +460,7 @@ class WebhooksClient(ForgeClient):
         await self._patch(
             f"/systems/{system}/events/{event}/hooks/{hook_id}",
             params=params,
-            buff=body,
+            json=body,
             scopes=[Scope.DATA_READ, Scope.DATA_WRITE],
         )
 
