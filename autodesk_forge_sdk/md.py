@@ -146,6 +146,8 @@ class ModelDerivativeClient(ForgeClient):
             json["misc"] = {"workflowId": kwargs["workflow_id"]}
             if "workflow_attr" in kwargs:
                 json["misc"]["workflowAttribute"] = kwargs["workflow_attr"]
+        if "advanced" in kwargs:
+            json["advanced"] = kwargs["advanced"]
         headers = {}
         if "force" in kwargs:
             headers["x-ads-force"] = "true"
