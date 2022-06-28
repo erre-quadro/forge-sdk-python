@@ -389,4 +389,4 @@ class ModelDerivativeClient(ForgeClient):
         endpoint = "/designdata/{}/manifest/{}/signedcookies".format(urn, deriv_urn)
         res = await self._get(endpoint, scopes=READ_SCOPES)
         headers = {"Cookie": ";".join(res.headers.getall("Set-Cookie"))}
-        return await self._req_content("GET", res["url"], headers=headers)
+        return await self._req_content("GET", res.json()["url"], headers=headers)
