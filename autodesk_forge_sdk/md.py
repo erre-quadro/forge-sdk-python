@@ -390,4 +390,4 @@ class ModelDerivativeClient(ForgeClient):
         res = await self._get(endpoint, scopes=READ_SCOPES)
         res_json = await res.json()
         headers = {"Cookie": ";".join(res.headers.getall("Set-Cookie"))}
-        return await self._req_content("GET", res_json["url"], headers=headers)
+        return await self._req_content(self._get, res_json["url"], headers=headers)
